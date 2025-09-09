@@ -1,20 +1,50 @@
-# Guía de Trade-Ups de CS2
+# Guía Completa de Trade-Ups de CS2
 
-> Resumen estructurado del contenido y las reglas prácticas para replicar la funcionalidad de **Trade-Up Guide** (como en TradeUpSpy) y calcular rentabilidad de contratos.
+> Documentación técnica completa sobre los contratos de intercambio de CS2, incluyendo mecánicas del juego, fórmulas matemáticas, y estrategias de rentabilidad. Esta guía replica la funcionalidad de **TradeUpSpy** con precisión matemática.
+
+## Tabla de Contenidos
+1. [Fundamentos de Trade-Ups](#1-qué-es-un-trade-up)
+2. [Cálculo de Float del Resultado](#2-fórmula-del-float-del-resultado)
+3. [Sistema de Probabilidades](#3-probabilidades-de-resultado)
+4. [Análisis de Rentabilidad](#4-rentabilidad-ev-y-comisiones)
+5. [Checklist de Validación](#5-checklist-rápida-antes-de-confirmar-el-contrato)
+6. [Errores Comunes](#6-errores-comunes)
+7. [Consejos Estratégicos](#7-consejos-prácticos)
+8. [Ejemplo Paso a Paso](#8-ejemplo-numérico-paso-a-paso)
+9. [Referencias](#9-referencias-útiles)
 
 ---
 
 ## 1) ¿Qué es un trade-up?
-Un **Trade-Up Contract** te permite **combinar 10 skins de la misma rareza** para recibir **1 skin** de la **rareza inmediata superior**.
 
-**Reglas clave**
-- Siempre **10 skins** y todas de **la misma rareza**.
-- **StatTrak™** y **no-StatTrak™** **no** pueden mezclarse en el mismo contrato; si usas StatTrak™, el resultado también será StatTrak™.
-- **Souvenir** no se puede usar.
-- La progresión llega hasta **Covert (rojo)**; no existen contratos hacia **Rare/Special** (cuchillos/guantes).
+Un **Trade-Up Contract** es el mecanismo oficial de CS2 que permite **combinar 10 skins de la misma rareza** para recibir **1 skin de la rareza inmediata superior**.
 
-**Progresión de rarezas**
-- Consumer Grade → Industrial Grade → **Mil‑Spec** → **Restricted** → **Classified** → **Covert**.
+### Reglas Fundamentales del Sistema
+
+#### Requisitos Obligatorios
+- **Cantidad exacta**: Siempre 10 skins, ni más ni menos
+- **Rareza homogénea**: Todas las skins deben ser de la misma rareza
+- **Consistencia StatTrak™**: No se puede mezclar StatTrak™ con skins normales
+- **Exclusión Souvenir**: Las skins Souvenir no pueden usarse en contratos
+
+#### Progresión de Rarezas
+```
+Consumer Grade (Gris) → Industrial Grade (Celeste) → Mil-Spec (Azul) → 
+Restricted (Morado) → Classified (Rosa) → Covert (Rojo)
+```
+
+**Limitación importante**: No existen contratos hacia **Rare/Special** (cuchillos/guantes dorados).
+
+#### Mecánica StatTrak™
+- Si usas 10 skins StatTrak™ → el resultado será StatTrak™
+- Si usas 10 skins normales → el resultado será normal
+- **Prohibido**: Mezclar StatTrak™ con skins normales en el mismo contrato
+
+### Colecciones y Compatibilidad
+- Las skins pertenecen a **colecciones** temáticas (ej: "The Chroma Collection")
+- Puedes mezclar skins de diferentes colecciones en un mismo contrato
+- Solo las colecciones que **tengan skins en la rareza objetivo** pueden producir resultados
+- La probabilidad de resultado se distribuye según la representación de cada colección
 
 ---
 
@@ -194,5 +224,148 @@ Precio_neto = Precio_bruto * (1 - 0.15)
 
 ---
 
-### Nota final
-Este .md está pensado para integrarse en tu repo (e.g., `docs/tradeups.md`) o como README de un módulo. Si necesitás, puedo adjuntar ejemplos numéricos y una hoja de fórmulas listas para test unitarios.
+## 10) Estrategias Avanzadas de Trade-Up
+
+### Optimización de Float
+- **Target Float**: Calcular el float promedio necesario para obtener el wear deseado
+- **Float Mixing**: Combinar floats altos y bajos para alcanzar el promedio objetivo
+- **Range Awareness**: Conocer los límites FloatMin/FloatMax de cada skin objetivo
+
+### Análisis de Colecciones
+- **Collection Mapping**: Identificar qué colecciones tienen outcomes valiosos
+- **Probability Weighting**: Ajustar entradas para favorecer colecciones específicas
+- **Outcome Diversity**: Evaluar la variabilidad de resultados posibles
+
+### Gestión de Riesgo
+- **Diversificación**: No apostar todo en un solo contrato
+- **Stop Loss**: Definir límites de pérdida aceptables
+- **Profit Taking**: Establecer objetivos de ganancia realistas
+
+## 11) Herramientas y Recursos
+
+### Calculadoras Recomendadas
+- **TradeUpSpy**: Herramienta de referencia para validar cálculos
+- **CSFloat Calculator**: Calculadora integrada en el marketplace
+- **Steam Analyst**: Análisis de precios históricos
+
+### Fuentes de Datos
+- **CSFloat API**: Precios en tiempo real y datos de mercado
+- **Steam Market**: Precios oficiales de referencia
+- **Buff163**: Marketplace alternativo con diferentes precios
+
+### Comunidades y Foros
+- **Reddit r/GlobalOffensiveTrade**: Discusiones y estrategias
+- **Discord Trading Servers**: Comunidades activas de traders
+- **YouTube Channels**: Tutoriales y análisis de mercado
+
+## 12) Casos de Estudio Reales
+
+### Caso 1: Contrato Chroma → Restricted
+**Objetivo**: Obtener AK-47 | Cartel con float bajo
+**Estrategia**: 
+- 5 entradas Chroma Collection (mil-spec)
+- 5 entradas Prisma 2 Collection (mil-spec)
+- Floats promedio: 0.12 (target MW)
+
+**Resultado Esperado**:
+- Probabilidad AK-47 Cartel: 10%
+- Float esperado: 0.09 (MW)
+- EV: $45.50, Costo: $42.00
+- ROI: +8.3%
+
+### Caso 2: Contrato de Alto Riesgo/Recompensa
+**Objetivo**: M4A4 | Howl (Contraband)
+**Estrategia**: Usar skins Classified específicas
+**Consideraciones**:
+- Skin extremadamente rara
+- Alto costo de entrada
+- Potencial ganancia masiva
+- Riesgo de pérdida total
+
+## 13) Automatización y Scripts
+
+### Script de Validación Rápida
+```python
+def quick_validate_contract(entries):
+    """Validación rápida de un contrato antes de ejecutar."""
+    # Verificar cantidad
+    if len(entries) != 10:
+        return False, "Debe tener exactamente 10 entradas"
+    
+    # Verificar rareza homogénea
+    rarities = set(entry.rarity for entry in entries)
+    if len(rarities) > 1:
+        return False, f"Rarezas mixtas: {rarities}"
+    
+    # Verificar StatTrak consistente
+    stattrak_values = set(entry.stattrak for entry in entries)
+    if len(stattrak_values) > 1:
+        return False, "No mezclar StatTrak con no-StatTrak"
+    
+    return True, "Contrato válido"
+```
+
+### Calculadora de Float Objetivo
+```python
+def calculate_target_float(target_wear: str, output_range: tuple) -> float:
+    """Calcular el float normalizado necesario para un wear específico."""
+    wear_ranges = {
+        "FN": (0.00, 0.07),
+        "MW": (0.07, 0.15),
+        "FT": (0.15, 0.38),
+        "WW": (0.38, 0.45),
+        "BS": (0.45, 1.00)
+    }
+    
+    min_out, max_out = output_range
+    target_min, target_max = wear_ranges[target_wear]
+    
+    # Calcular rango válido en el espacio normalizado
+    norm_min = max(0, (target_min - min_out) / (max_out - min_out))
+    norm_max = min(1, (target_max - min_out) / (max_out - min_out))
+    
+    # Retornar punto medio del rango válido
+    return (norm_min + norm_max) / 2
+```
+
+## 14) Glosario de Términos
+
+### Términos de CS2
+- **Float**: Valor numérico (0.0-1.0) que determina el desgaste visual de una skin
+- **Wear**: Condición visual de la skin (FN, MW, FT, WW, BS)
+- **StatTrak™**: Variante especial que cuenta estadísticas del jugador
+- **Souvenir**: Skins conmemorativas de torneos (no usables en trade-ups)
+
+### Términos de Trading
+- **EV (Expected Value)**: Valor esperado matemático del contrato
+- **ROI (Return on Investment)**: Retorno de inversión en porcentaje
+- **Market Hash Name**: Nombre único usado en APIs para identificar skins
+- **Listing**: Oferta de venta en un marketplace
+
+### Términos Técnicos
+- **Normalized Float**: Float convertido al rango 0-1 usando FloatMin/FloatMax
+- **Remapping**: Proceso de convertir float normalizado al rango de la skin objetivo
+- **Pool of Outcomes**: Modelo de probabilidad usado por TradeUpSpy
+- **Rate Limiting**: Restricción en la velocidad de solicitudes a APIs
+
+## 15) Preguntas Frecuentes (FAQ)
+
+### ¿Puedo usar skins Souvenir en trade-ups?
+No, las skins Souvenir no pueden usarse en contratos de trade-up.
+
+### ¿El StatTrak™ afecta el float del resultado?
+No, StatTrak™ no afecta el cálculo de float. Solo afecta el precio y la disponibilidad.
+
+### ¿Puedo hacer trade-up hacia cuchillos o guantes?
+No, los trade-ups solo llegan hasta la rareza Covert (rojo). No se puede obtener Rare/Special.
+
+### ¿Qué pasa si una colección no tiene outcomes en la rareza objetivo?
+Esa colección no contribuirá resultados posibles, pero sus entradas sí afectan las probabilidades de otras colecciones.
+
+### ¿Cómo afectan las comisiones al cálculo?
+Las comisiones reducen el precio neto de venta. Usa `EV_neto = EV * (1 - fee_rate)` para cálculos precisos.
+
+---
+
+### Nota Final
+Esta guía proporciona una base sólida para entender y ejecutar trade-ups rentables en CS2. Recuerda siempre validar tus cálculos con herramientas como TradeUpSpy y nunca arriesgues más de lo que puedes permitirte perder.

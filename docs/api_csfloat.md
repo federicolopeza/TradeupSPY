@@ -1,12 +1,20 @@
-# Endpoints y Especificaciones de la API
+# Guía de Integración de la API de CSFloat
 
-## 🌐 Base URL y Autenticación
+## 🌐 Configuración Base y Autenticación
 
-### Configuración Base
-- **Base URL**: `https://csfloat.com`
-- **Documentación oficial**: https://docs.csfloat.com/#introduction
-- **Autenticación**: API key en header `Authorization: <API-KEY>`
-- **Generación de API Key**: Perfil CSFloat → pestaña "developer"
+### Configuración de la API
+- **URL Base**: `https://csfloat.com`
+- **Documentación Oficial**: https://docs.csfloat.com/#introduction
+- **Autenticación**: Clave API en header `Authorization: <API-KEY>`
+- **Generación de API Key**: Perfil CSFloat → pestaña "Developer"
+- **Límites de Velocidad**: 60 solicitudes por minuto (aplicado por IP)
+- **Formato de Respuesta**: JSON con manejo consistente de errores
+
+## ℹ️ Alcance del repositorio
+
+- Este repositorio contiene la herramienta CLI en Python. Las referencias a "Web Dashboard" y "proxy server" describen integraciones futuras y no forman parte del código de este repo.
+- Para integrar con CSFloat desde este proyecto, usá la clase `CsfloatClient` del módulo `tradeup.csfloat_api`.
+- Todos los precios devueltos por la API se expresan en centavos.
 
 ### Consumo desde Web Dashboard
 El web dashboard consume los mismos endpoints que el CLI a través de un servidor proxy Hono que:
@@ -16,7 +24,7 @@ El web dashboard consume los mismos endpoints que el CLI a través de un servido
 - **Rate Limiting**: Implementa rate limiting por IP (60 req/min por defecto)
 - **Retry Logic**: Manejo automático de reintentos con backoff exponencial
 
-## 📋 Endpoints Soportados
+## 📋 Endpoints soportados
 
 ### 1. `GET /api/v1/listings` - Listados Activos
 
@@ -88,7 +96,7 @@ const response = await getListings({
 
 Nota sobre formato: el proxy normaliza la respuesta a la forma `{ data: Listing[], cursor?: string }` y reexpone el cursor en el header `x-next-cursor`. El cliente web (`getListings`) también intenta leer `cursor` del cuerpo normalizado si el header no está presente.
 
-### 2. `GET /api/v1/listings/{id}` - Detalle de Listing
+### 2. `GET /api/v1/listings/{id}` - Detalle de listing
 
 #### Descripción
 Obtiene el detalle completo de un listing específico. Devuelve el objeto completo incluso si `state ≠ listed`.
@@ -116,7 +124,7 @@ const listing = await getListingById('listing-id-123')
 // Respuesta idéntica a la del CLI Python
 ```
 
-### 3. `POST /api/v1/listings` - Publicar Ítem
+### 3. `POST /api/v1/listings` - Publicar ítem
 
 #### Descripción
 Publica un nuevo ítem en el marketplace. **Requiere Authorization header**.
@@ -150,9 +158,9 @@ def post_listing(
 #### Nota sobre Web Dashboard
 El endpoint `POST /listings` actualmente **no está implementado** en el web dashboard, ya que se enfoca en exploración y visualización de listings existentes. El proxy server solo maneja endpoints de lectura (`GET`).
 
-## 🔍 Estructura de Respuesta
+## 🔍 Estructura de respuesta
 
-### Modelo Listing Completo
+### Modelo Listing completo
 
 #### Python (Pydantic)
 ```python
@@ -192,7 +200,7 @@ interface Listing {
 }
 ```
 
-### Campos Críticos del Item
+### Campos críticos del item
 
 #### Python (Pydantic)
 ```python
@@ -239,14 +247,14 @@ Notas:
 - `icon_url` y `has_screenshot` se utilizan para renderizar la imagen del ítem en el dashboard.
 - La URL final de imagen se construye con `getItemImageUrl` en `apps/csfloat-dash/src/lib/utils/images.ts`.
 
-### Validación Cross-Language
+### Validación cross-language
 
-#### Flujo de Datos
+#### Flujo de datos
 ```
 CSFloat API → Python Pydantic → JSON → TypeScript Types → React Components
 ```
 
-#### Diferencias Clave
+#### Diferencias clave
 | Aspecto | Python | TypeScript |
 |---------|--------|------------|
 | **Fechas** | `datetime` objects | ISO strings |
@@ -260,25 +268,25 @@ CSFloat API → Python Pydantic → JSON → TypeScript Types → React Componen
 - **Runtime**: Validación implícita via JSON parsing
 - **Error Handling**: Proxy server maneja errores de API y los reenvía al frontend
 
-## 🔄 Proxy Server (Web Dashboard)
+## 🔄 Proxy server (Web Dashboard)
 
-### Arquitectura del Proxy
+### Arquitectura del proxy
 El web dashboard utiliza un servidor proxy Hono (`apps/csfloat-dash/server/index.ts`) que actúa como intermediario entre el frontend React y la API de CSFloat:
 
 ```
 Frontend React → Proxy Hono (localhost:8787) → CSFloat API (csfloat.com)
 ```
 
-### Endpoints del Proxy
+### Endpoints del proxy
 | Endpoint Proxy | Endpoint CSFloat | Descripción |
 |----------------|------------------|-------------|
 | `GET /proxy/listings` | `GET /api/v1/listings` | Listados con filtros |
 | `GET /proxy/listings/:id` | `GET /api/v1/listings/:id` | Detalle de listing |
 | `GET /proxy/meta/collections` | `GET /api/v1/listings` (muestreo) | Catálogo agregado de colecciones (cacheado) |
 
-### Procesamiento de Requests/Responses
+### Procesamiento de requests/responses
 
-#### Inyección de Autenticación
+#### Inyección de autenticación
 ```typescript
 // El proxy inyecta automáticamente la API key
 const headers: Record<string, string> = {
@@ -287,12 +295,12 @@ const headers: Record<string, string> = {
 if (API_KEY) headers['authorization'] = API_KEY
 ```
 
-#### Rate Limiting por IP
+#### Rate limiting por IP
 - **Límite**: 60 requests por minuto por IP (configurable)
 - **Ventana**: 60 segundos (configurable)
 - **Respuesta**: HTTP 429 con header `retry-after`
 
-#### Retry Logic con Backoff Exponencial
+#### Retry logic con backoff exponencial
 ```typescript
 // Delays: [500ms, 1000ms, 2000ms, 4000ms]
 // Reintentos automáticos para:
@@ -301,17 +309,17 @@ if (API_KEY) headers['authorization'] = API_KEY
 // - Respeta header 'retry-after' de CSFloat
 ```
 
-#### Normalización de Parámetros (collection)
+#### Normalización de parámetros (collection)
 - Si el parámetro `collection` llega como nombre "amigable" (por ejemplo, `The Gamma Collection` o `the_gamma_collection`), el proxy lo reescribe a la forma de ID esperada por la API (`set_gamma`).
 - La reescritura usa primero un índice estático (catálogo) y, si no hay match, aplica heurísticas: normaliza, elimina artículos/sufijos y convierte a snake case.
 - Esta lógica mejora la DX del frontend sin cambiar la especificación de la API de CSFloat.
 
-#### Manejo de Errores
+#### Manejo de errores
 - **Transparencia**: Reenvía status codes y headers originales
 - **Logging**: Registra método, path, status y tiempo de respuesta
 - **Headers preservados**: `content-type`, `retry-after`
 
-### Variables de Entorno
+### Variables de entorno
 ```bash
 # Configuración del proxy server
 PORT=8787                    # Puerto del proxy
@@ -321,7 +329,7 @@ RATE_LIMIT=60                     # Requests por ventana
 RATE_WINDOW_MS=60000             # Ventana en milisegundos
 ```
 
-## 🔗 Permalinks y Enlaces Públicos (Web)
+## 🔗 Permalinks y enlaces públicos (Web)
 
 El dashboard ofrece un botón "View on CSFloat" que apunta al permalink público del ítem:
 
@@ -334,17 +342,206 @@ El dashboard ofrece un botón "View on CSFloat" que apunta al permalink público
 
 Ubicación del helper en frontend: `apps/csfloat-dash/src/lib/utils/url.ts`.
 
-## ⚠️ Notas Importantes
+## ⚠️ Notas importantes
 
-### Precios en Centavos
+### Precios en centavos
 - **Todos los precios** (`price`, `min_price`, `max_price`) están expresados en **centavos**
 - Ejemplo: `$89.00 USD = 8900 centavos`
 
-### Manejo de Estados
+### Manejo de estados
 - `GET /listings/{id}` devuelve el objeto **incluso si `state ≠ "listed"`**
 - Estados posibles: `"listed"`, `"sold"`, `"cancelled"`, etc.
 
-### Autenticación Requerida
+### Autenticación requerida
 - `POST /listings` **siempre requiere** header `Authorization`
 - `GET` endpoints pueden funcionar sin auth, pero algunos pueden requerir auth para datos completos
 - **Web Dashboard**: La autenticación se maneja automáticamente en el proxy server
+
+## 🧪 Ejemplos de uso (prácticos)
+
+### cURL
+
+```bash
+# Listar ítems con filtros básicos (precio y float)
+curl -s -H "accept: application/json" \
+     -H "authorization: $CSFLOAT_API_KEY" \
+     "https://csfloat.com/api/v1/listings?sort_by=lowest_price&min_float=0.00&max_float=0.07&limit=10"
+
+# Detalle de un listing específico
+curl -s -H "accept: application/json" \
+     -H "authorization: $CSFLOAT_API_KEY" \
+     "https://csfloat.com/api/v1/listings/<LISTING_ID>"
+```
+
+### Python (requests)
+
+```python
+import os, requests
+
+API_KEY = os.getenv("CSFLOAT_API_KEY")
+BASE = os.getenv("CSFLOAT_BASE", "https://csfloat.com")
+headers = {"accept": "application/json"}
+if API_KEY:
+    headers["authorization"] = API_KEY
+
+# 1) Listado
+resp = requests.get(
+    f"{BASE}/api/v1/listings",
+    headers=headers,
+    params={
+        "sort_by": "lowest_price",
+        "min_float": 0.00,
+        "max_float": 0.07,
+        "limit": 10,
+    },
+    timeout=30,
+)
+resp.raise_for_status()
+data = resp.json()
+
+# 2) Detalle (si existe algún id)
+if data and isinstance(data, dict) and data.get("data"):
+    listing_id = data["data"][0]["id"]
+    detail = requests.get(f"{BASE}/api/v1/listings/{listing_id}", headers=headers, timeout=30)
+    detail.raise_for_status()
+    listing = detail.json()
+```
+
+### Integración con TradeUpSPY (CLI)
+
+```python
+# Ejemplo de cómo TradeUpSPY usa la API internamente (CLI)
+from typing import Optional
+from tradeup.csfloat_api import CsfloatClient
+from tradeup.models import ContractEntry, wear_from_float
+
+def get_skin_price(entry: ContractEntry) -> Optional[int]:
+    """Obtener precio mínimo actual en centavos para una skin usando CSFloat."""
+    api = CsfloatClient()
+
+    # Construir market_hash_name según float y StatTrak
+    wear_name = wear_from_float(entry.float_value)
+    prefix = "StatTrak™ " if entry.stattrak else ""
+    market_name = f"{prefix}{entry.name} ({wear_name})"
+
+    # Consultar el precio más bajo
+    try:
+        price = api.get_lowest_price_cents(market_name, stattrak=entry.stattrak)
+        return price
+    except Exception as e:
+        print(f"Error al obtener precio para {market_name}: {e}")
+        return None
+```
+
+## ⚙️ Variables de Entorno Recomendadas
+
+```bash
+# Configuración básica (requerida para autenticación)
+CSFLOAT_API_KEY=tu_clave_api_aqui
+
+# Configuración opcional (con valores por defecto)
+CSFLOAT_BASE=https://csfloat.com
+
+# Para desarrollo y testing
+CSFLOAT_TIMEOUT=30
+CSFLOAT_MAX_RETRIES=3
+CSFLOAT_CACHE_TTL=300
+```
+
+## 🔧 Mejores Prácticas de Integración
+
+### Manejo de Rate Limits
+```python
+import time
+from typing import List
+
+class RateLimitedAPI:
+    def __init__(self, requests_per_minute: int = 60):
+        self.requests_per_minute = requests_per_minute
+        self.request_times: List[float] = []
+    
+    def wait_if_needed(self):
+        """Esperar si es necesario para respetar rate limits."""
+        now = time.time()
+        # Limpiar requests antiguos (fuera de la ventana de 1 minuto)
+        self.request_times = [t for t in self.request_times if now - t < 60]
+        
+        if len(self.request_times) >= self.requests_per_minute:
+            sleep_time = 60 - (now - self.request_times[0])
+            if sleep_time > 0:
+                time.sleep(sleep_time)
+        
+        self.request_times.append(now)
+```
+
+### Caché Inteligente
+```python
+import json
+import os
+from datetime import datetime, timedelta
+
+class CachedAPI:
+    def __init__(self, cache_file: str = "api_cache.json", ttl_minutes: int = 5):
+        self.cache_file = cache_file
+        self.ttl = timedelta(minutes=ttl_minutes)
+        self.cache = self._load_cache()
+    
+    def _load_cache(self) -> dict:
+        if os.path.exists(self.cache_file):
+            with open(self.cache_file, 'r') as f:
+                return json.load(f)
+        return {}
+    
+    def _save_cache(self):
+        with open(self.cache_file, 'w') as f:
+            json.dump(self.cache, f)
+    
+    def get_cached_or_fetch(self, key: str, fetch_func):
+        """Obtener de caché o hacer fetch si es necesario."""
+        if key in self.cache:
+            cached_time = datetime.fromisoformat(self.cache[key]["timestamp"])
+            if datetime.now() - cached_time < self.ttl:
+                return self.cache[key]["data"]
+        
+        # Fetch nuevo dato
+        data = fetch_func()
+        self.cache[key] = {
+            "data": data,
+            "timestamp": datetime.now().isoformat()
+        }
+        self._save_cache()
+        return data
+```
+
+### Manejo Robusto de Errores
+```python
+import requests
+from typing import Optional, Dict, Any
+
+def safe_api_call(url: str, headers: dict, params: dict = None, max_retries: int = 3) -> Optional[Dict[str, Any]]:
+    """Realizar llamada a API con manejo robusto de errores."""
+    for attempt in range(max_retries):
+        try:
+            response = requests.get(url, headers=headers, params=params, timeout=30)
+            
+            if response.status_code == 429:  # Rate limit
+                retry_after = int(response.headers.get('retry-after', 60))
+                print(f"Rate limit alcanzado. Esperando {retry_after} segundos...")
+                time.sleep(retry_after)
+                continue
+            
+            response.raise_for_status()
+            return response.json()
+            
+        except requests.exceptions.Timeout:
+            print(f"Timeout en intento {attempt + 1}/{max_retries}")
+            if attempt < max_retries - 1:
+                time.sleep(2 ** attempt)  # Backoff exponencial
+        
+        except requests.exceptions.RequestException as e:
+            print(f"Error en API call: {e}")
+            if attempt < max_retries - 1:
+                time.sleep(2 ** attempt)
+    
+    return None
+```
