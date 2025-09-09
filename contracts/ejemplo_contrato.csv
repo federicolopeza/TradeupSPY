@@ -1,11 +1,13 @@
 Name,Collection,Rarity,Float,PriceCents,StatTrak
-MP9 | Deadly Poison,The Chroma Collection,mil-spec,0.09,,false
-SCAR-20 | Grotto,The Chroma Collection,mil-spec,0.12,,false
-XM1014 | Quicksilver,The Chroma Collection,mil-spec,0.06,,false
-M249 | System Lock,The Chroma Collection,mil-spec,0.20,,false
-Desert Eagle | Naga,The Chroma Collection,mil-spec,0.15,,false
-AUG | Tom Cat,The Prisma 2 Collection,mil-spec,0.16,,false
-CZ75-Auto | Distressed,The Prisma 2 Collection,mil-spec,0.10,,false
-MP5SD | Desert Strike,The Prisma 2 Collection,mil-spec,0.30,,false
-REVOLVER | Bone Forged,The Prisma 2 Collection,mil-spec,0.12,,false
-Negev | Prototype,The Prisma 2 Collection,mil-spec,0.21,,false
+CZ75-Auto | Pole Position,The Chroma 2 Collection,restricted,0.213559418917,,false
+CZ75-Auto | Pole Position,The Chroma 2 Collection,restricted,0.183809459209,,false
+CZ75-Auto | Pole Position,The Chroma 2 Collection,restricted,0.177276119590,,false
+CZ75-Auto | Pole Position,The Chroma 2 Collection,restricted,0.159674689174,,false
+CZ75-Auto | Pole Position,The Chroma 2 Collection,restricted,0.151411235332,,false
+CZ75-Auto | Pole Position,The Chroma 2 Collection,restricted,0.151374638081,,false
+CZ75-Auto | Pole Position,The Chroma 2 Collection,restricted,0.150837123394,,false
+MAG-7 | Heat,The Chroma 2 Collection,restricted,0.124699443579,,false
+AWP | Worm God,The Chroma 2 Collection,restricted,0.086348176003,,false
+CZ75-Auto | Pole Position,The Chroma 2 Collection,restricted,0.071925900877,,false
+
+

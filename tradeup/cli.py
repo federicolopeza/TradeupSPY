@@ -17,7 +17,13 @@ from .contracts import (
     compute_outcomes,
     summarize_contract,
 )
-from .pricing import fill_entry_prices, fill_outcome_prices
+from .pricing import (
+    fill_entry_prices,
+    fill_outcome_prices,
+    load_local_prices_csv,
+    fill_entry_prices_local,
+    fill_outcome_prices_local,
+)
 from .csfloat_api import CsfloatClient
 
 console = Console()
@@ -46,8 +52,8 @@ def build_args() -> argparse.Namespace:
     parser.add_argument(
         "--fees",
         type=float,
-        default=0.15,
-        help="Tasa total de comisiones (Steam + juego). Default: 0.15",
+        default=0.02,
+        help="Tasa de comisiones. Default: 0.02 (CSFloat venta)",
     )
     parser.add_argument(
         "--fetch-prices",
@@ -60,6 +66,16 @@ def build_args() -> argparse.Namespace:
         dest="fetch_prices",
         action="store_false",
         help="No consultar CSFloat. Usa PriceCents del CSV si está presente.",
+    )
+    parser.add_argument(
+        "--local-prices",
+        type=str,
+        default=None,
+        help=(
+            "CSV local de precios para completar entries y outcomes cuando no se consulta CSFloat. "
+            "Formatos soportados: "
+            "(1) MarketHashName,PriceCents; (2) Name,Wear,PriceCents[,StatTrak]."
+        ),
     )
     parser.set_defaults(fetch_prices=True)
     return parser.parse_args()
@@ -151,15 +167,24 @@ def main():
         rarity, stattrak = validate_entries(entries)
         fill_ranges_from_catalog(entries, catalog)
 
-        # Completar precios de entradas si se pidió
+        # Completar precios (entradas y outcomes)
         client = CsfloatClient()
+        price_source_note = None
         if args.fetch_prices:
             fill_entry_prices(entries, client, stattrak)
-
-        # Outcomes y completado de precios
+            price_source_note = "CSFloat"
+        elif args.local_prices:
+            prices_by_mhn = load_local_prices_csv(args.local_prices)
+            fill_entry_prices_local(entries, prices_by_mhn, stattrak)
+        # Outcomes y precios
         outcomes = compute_outcomes(entries, catalog)
         if args.fetch_prices:
             fill_outcome_prices(outcomes, client, stattrak)
+            price_source_note = price_source_note or "CSFloat"
+        elif args.local_prices:
+            prices_by_mhn = prices_by_mhn if 'prices_by_mhn' in locals() else load_local_prices_csv(args.local_prices)
+            fill_outcome_prices_local(outcomes, prices_by_mhn, stattrak)
+            price_source_note = f"CSV local ({args.local_prices})"
 
         # Resumen y tablas
         res = summarize_contract(entries, outcomes, fees_rate=args.fees)
@@ -168,7 +193,15 @@ def main():
         print_summary(res)
 
         # Notas
-        console.print("[dim]Nota: los precios provienen de CSFloat en centavos. EV neto descuenta fees configuradas.[/dim]")
+        if price_source_note:
+            console.print(f"[dim]Nota: los precios provienen de {price_source_note} en centavos. EV neto descuenta fees configuradas.[/dim]")
+        else:
+            # Detectar si hay algún precio de entrada manual
+            any_entry_price = any(e.price_cents is not None for e in entries)
+            if any_entry_price:
+                console.print("[dim]Nota: se usaron PriceCents del CSV del contrato para las entradas. Para EV completo, proveé precios de outcomes vía --local-prices o --fetch-prices.[/dim]")
+            else:
+                console.print("[dim]Nota: no se cargaron precios. Pasá --local-prices o --fetch-prices, o completá PriceCents en el CSV del contrato. EV/ROI pueden quedar en '-'.[/dim]")
         console.print("[dim]Modelo de probabilidades: pool de outcomes, como TradeUpSpy.[/dim]")
 
     except ContractValidationError as e:

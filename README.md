@@ -30,6 +30,15 @@ Variables de entorno (opcional para precios):
 - Contrato: CSV con encabezados (en inglés):
   - `Name`, `Collection`, `Rarity`, `Float`, `PriceCents` (opcional), `StatTrak` (`true/false`)
 
+- Precios locales (opcional, si usás `--no-fetch-prices`):
+  - Podés proveer un CSV de precios con `--local-prices <ruta>`. Formatos soportados:
+    1) `MarketHashName,PriceCents`
+       - Ej.: `"AK-47 | Cartel (Field-Tested)",8900`
+    2) `Name,Wear,PriceCents[,StatTrak]`
+       - Ej.: `"AK-47 | Cartel","Field-Tested",8900,true`
+  - Los precios deben estar en centavos.
+  - Consejo: un ejemplo se incluye en `docs/local_prices.example.csv` (valores ficticios).
+
 Ejemplo: `contracts/ejemplo_contrato.csv` creado en este repo combina 5 entradas Mil‑Spec de `The Chroma Collection` y 5 de `The Prisma 2 Collection`.
 
 ## Uso (CLI)
@@ -40,18 +49,29 @@ Ejecutar con precios locales (sin consultar CSFloat):
 python -m tradeup.cli --contract contracts/ejemplo_contrato.csv --catalog data/skins.csv --no-fetch-prices
 ```
 
+Usar un CSV local de precios para completar `entries` y `outcomes` (recomendado si no consultás CSFloat):
+
+```bash
+python -m tradeup.cli \
+  --contract contracts/ejemplo_contrato.csv \
+  --catalog data/skins.csv \
+  --no-fetch-prices \
+  --local-prices docs/local_prices.example.csv
+```
+
 Ejecutar consultando CSFloat (requiere API key en `.env` o entorno):
 
 ```bash
-python -m tradeup.cli --contract contracts/ejemplo_contrato.csv --catalog data/skins.csv --fees 0.15
+python -m tradeup.cli --contract contracts/ejemplo_contrato.csv --catalog data/skins.csv
 ```
 
 Parámetros:
 
 - `--contract`: Ruta al CSV del contrato (exactamente 10 entradas).
 - `--catalog`: Ruta al CSV del catálogo (`data/skins.csv` por defecto).
-- `--fees`: Tasa total de comisiones (Steam + juego), por defecto `0.15`.
+- `--fees`: Tasa de comisiones. Por defecto `0.02` (fee de venta típica de CSFloat).
 - `--fetch-prices` / `--no-fetch-prices`: Activar/desactivar consulta a CSFloat.
+- `--local-prices`: Ruta a CSV local de precios (ver formatos soportados arriba). Si está presente y `--no-fetch-prices`, se completan precios de entradas y outcomes con este CSV.
 
 ## Reglas implementadas (resumen)
 
@@ -117,7 +137,7 @@ Estructura del paquete `tradeup/`:
 - `csv_loader.py`: lectura de `data/skins.csv` y del CSV de contrato.
 - `contracts.py`: validación, cálculo de `f_norm_avg`, outcomes y resumen (EV/ROI).
 - `csfloat_api.py`: cliente mínimo de CSFloat (`GET /api/v1/listings`) con reintentos y cache local simple.
-- `pricing.py`: completado de precios de entradas y outcomes.
+- `pricing.py`: completado de precios de entradas y outcomes (desde CSFloat o CSV local).
 - `cli.py`: interfaz de línea de comandos con tablas Rich.
 
 ## Licencias de terceros
