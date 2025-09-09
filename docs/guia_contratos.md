@@ -113,53 +113,76 @@ Ajustá 13–15% según tu fuente/estrategia.
 
 ## 8) Ejemplo numérico (paso a paso)
 
-Escenario (hipotético para ilustrar):
-- Objetivo: pasar de Mil‑Spec a Restricted mezclando 2 colecciones.
-- Entradas: 10 skins con floats (mismo rango `[0.00, 1.00]` para simplificar).
-- Colecciones y outcomes:
-  - C1: `n_C1 = 6` entradas, `m_C1 = 2` outcomes (R1, R2).
-  - C2: `n_C2 = 4` entradas, `m_C2 = 3` outcomes (R3, R4, R5).
+Ejemplo real (tomado de `data/skins_catalog_like_csfloat_2025-09-09.csv`):
+- Objetivo: Mil‑Spec → Restricted mezclando 2 colecciones de cases.
+- Colecciones elegidas: `The Chroma Collection` y `The Prisma 2 Collection`.
 
-**1) Promedio de floats (mismo rango)**
-```
-F = [0.02, 0.03, 0.04, 0.05, 0.06, 0.08, 0.10, 0.12, 0.14, 0.16]
-f_norm_avg = average(F) = 0.08
-```
-> Si los rangos Min/Max de entrada difieren, calculá `f_i_norm` con su `[Min_i, Max_i]` y luego promediá como se definió en la sección 2.
+Entradas (10 skins, con sus rangos reales del CSV):
+- Chroma (5 entradas, `n_C1 = 5`):
+  - MP9 | Deadly Poison, rango [0.00, 1.00], F=0.09 → `f=0.09`
+  - SCAR‑20 | Grotto, rango [0.00, 0.50], F=0.12 → `f=0.24`
+  - XM1014 | Quicksilver, rango [0.00, 0.50], F=0.06 → `f=0.12`
+  - M249 | System Lock, rango [0.00, 0.80], F=0.20 → `f=0.25`
+  - Desert Eagle | Naga, rango [0.00, 1.00], F=0.15 → `f=0.15`
+- Prisma 2 (5 entradas, `n_C2 = 5`):
+  - AUG | Tom Cat, rango [0.00, 0.80], F=0.16 → `f=0.20`
+  - CZ75‑Auto | Distressed, rango [0.00, 1.00], F=0.10 → `f=0.10`
+  - MP5SD | Desert Strike, rango [0.00, 1.00], F=0.30 → `f=0.30`
+  - REVOLVER | Bone Forged, rango [0.00, 0.60], F=0.12 → `f=0.20`
+  - Negev | Prototype, rango [0.00, 0.70], F=0.21 → `f=0.30`
 
-**2) Probabilidades por pool de outcomes**
+**1) Promedio normalizado**
 ```
-S = n_C1*m_C1 + n_C2*m_C2 = 6*2 + 4*3 = 24
-P(R1) = n_C1 / S = 6/24 = 0.25
-P(R2) = 0.25
-P(R3) = n_C2 / S = 4/24 ≈ 0.1667
-P(R4) = 0.1667
-P(R5) = 0.1667
+f_norm_avg = (0.09+0.24+0.12+0.25+0.15+0.20+0.10+0.30+0.20+0.30) / 10
+             = 1.95 / 10
+             = 0.195
 ```
 
-**3) Remapeo de float de salida**
-Supongamos rangos de salida:
-- R1: `[0.00, 0.08]`  → `Float_out = 0.00 + (0.08)*0.08 = 0.0064`
-- R2: `[0.00, 0.40]`  → `Float_out = 0.0320`
-- R3: `[0.10, 0.80]`  → `Float_out = 0.10 + 0.70*0.08 = 0.156`
-- R4: `[0.00, 1.00]`  → `Float_out = 0.08`
-- R5: `[0.15, 1.00]`  → `Float_out = 0.15 + 0.85*0.08 = 0.218`
+**2) Outcomes Restricted y probabilidades (pool de outcomes)**
+- Chroma (`m_C1 = 5` outcomes):
+  - AK‑47 | Cartel [0.00, 0.75]
+  - Dual Berettas | Urban Shock [0.00, 0.47]
+  - M4A4 | 龍王 (Dragon King) [0.00, 0.75]
+  - MAC‑10 | Malachite [0.00, 0.50]
+  - Sawed‑Off | Serenity [0.00, 0.50]
+- Prisma 2 (`m_C2 = 5` outcomes):
+  - AK‑47 | Phantom Disruptor [0.00, 0.65]
+  - SCAR‑20 | Enforcer [0.00, 1.00]
+  - SG 553 | Darkwing [0.00, 1.00]
+  - SSG 08 | Fever Dream [0.00, 0.72]
+  - Sawed‑Off | Apocalypto [0.00, 1.00]
 
-**4) EV y EV neto (precios hipotéticos)**
+Pool total: `S = n_C1*m_C1 + n_C2*m_C2 = 5*5 + 5*5 = 50`
+- Probabilidad de cada outcome de Chroma: `P = n_C1 / S = 5/50 = 0.10`.
+- Probabilidad de cada outcome de Prisma 2: `P = n_C2 / S = 5/50 = 0.10`.
+
+**3) Remapeo del float de salida**
+Fórmula: `Float_out = Min_out + (Max_out − Min_out) * f_norm_avg`. En estos casos `Min_out=0`.
+- Chroma:
+  - Cartel → `0.75 * 0.195 = 0.1463`
+  - Urban Shock → `0.47 * 0.195 ≈ 0.09165`
+  - Dragon King → `0.75 * 0.195 = 0.1463`
+  - Malachite → `0.50 * 0.195 = 0.0975`
+  - Serenity → `0.50 * 0.195 = 0.0975`
+- Prisma 2:
+  - Phantom Disruptor → `0.65 * 0.195 = 0.12675`
+  - Enforcer → `1.00 * 0.195 = 0.195`
+  - Darkwing → `1.00 * 0.195 = 0.195`
+  - Fever Dream → `0.72 * 0.195 ≈ 0.1404`
+  - Apocalypto → `1.00 * 0.195 = 0.195`
+
+**4) EV y EV neto**
+- Definí precios por outcome y calculá:
 ```
-Precios brutos: R1=200, R2=50, R3=25, R4=20, R5=10
-EV = 0.25*200 + 0.25*50 + 0.1667*(25+20+10)
-     ≈ 50 + 12.5 + 4.167 + 3.333 + 1.667
-     ≈ 71.67
-EV_neto = EV * 0.85 ≈ 60.92
-Costo entradas: 10 * 5 = 50
-Resultado: EV_neto (60.92) > costo (50) → contrato rentable en expectativa.
+EV = sum_j (Precio_j * Prob_j)
+Precio_neto = Precio_bruto * (1 - 0.15)
 ```
+- Compará `EV_neto` contra el costo total de las 10 entradas.
 
 **Notas**
-- Verificá que los outcomes existan en esas colecciones/rareza.
-- Ajustá comisiones si no vendés en Steam.
-- **StatTrak™** usa los mismos rangos de float; lo que cambia es el precio de mercado.
+- El modelo por defecto es el **pool de outcomes** (alineado a TradeUpSpy).
+- **StatTrak™** no cambia `FloatMin/FloatMax`; sólo afecta precios/disponibilidad.
+- Si una colección tiene distinto `m_C`, los pesos por outcome cambian en el pool.
 
 ---
 
