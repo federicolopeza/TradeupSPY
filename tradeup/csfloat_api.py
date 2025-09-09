@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import os
 import time
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any, Dict, List, Optional, Tuple, Iterable
 
 import requests
 from dotenv import load_dotenv
@@ -83,6 +83,90 @@ class CsfloatClient:
             return {"data": data}
         return data
 
+    def _get_with_retries(self, path: str, params: Dict[str, Any], retries: int = 4) -> Tuple[Dict[str, Any], Dict[str, str]]:
+        """GET con reintentos que devuelve (data_normalizada, headers).
+
+        - Normaliza listas a {"data": list} para uso interno consistente.
+        - Aplica backoff exponencial y respeta 'retry-after' en 429.
+        """
+        url = f"{self.base_url}{path}"
+        backoffs = [0.5, 1.0, 2.0, 4.0]
+        for attempt in range(retries):
+            try:
+                resp = self.session.get(url, headers=self._headers(), params=params, timeout=self.timeout)
+                if resp.status_code == 429:
+                    retry_after = float(resp.headers.get("retry-after", backoffs[min(attempt, len(backoffs)-1)]))
+                    time.sleep(retry_after)
+                    continue
+                if 500 <= resp.status_code < 600:
+                    time.sleep(backoffs[min(attempt, len(backoffs)-1)])
+                    continue
+                resp.raise_for_status()
+                data_raw = resp.json()
+                if isinstance(data_raw, dict) and "data" in data_raw:
+                    return data_raw, dict(resp.headers)
+                if isinstance(data_raw, list):
+                    return {"data": data_raw}, dict(resp.headers)
+                return data_raw, dict(resp.headers)
+            except Exception:
+                time.sleep(backoffs[min(attempt, len(backoffs)-1)])
+                continue
+        # intento final
+        resp = self.session.get(url, headers=self._headers(), params=params, timeout=self.timeout)
+        resp.raise_for_status()
+        data_raw = resp.json()
+        if isinstance(data_raw, dict) and "data" in data_raw:
+            return data_raw, dict(resp.headers)
+        if isinstance(data_raw, list):
+            return {"data": data_raw}, dict(resp.headers)
+        return data_raw, dict(resp.headers)
+
+    @staticmethod
+    def _extract_next_cursor(headers: Dict[str, str], data: Dict[str, Any]) -> Optional[str]:
+        """Extrae cursor de siguiente página desde headers o cuerpo.
+
+        - Prefiere header 'X-Next-Cursor' (case-insensitive).
+        - Fallback: campo 'cursor' en el JSON si existe y es string.
+        """
+        # headers case-insensitive lookup
+        for k, v in headers.items():
+            if k.lower() == "x-next-cursor" and v:
+                return v
+        if isinstance(data, dict):
+            cursor = data.get("cursor")
+            if isinstance(cursor, str) and cursor:
+                return cursor
+        return None
+
+    def iter_listings(self, **filters: Any) -> Iterable[Dict[str, Any]]:
+        """Itera sobre listados paginando con cursor cuando esté disponible.
+
+        Uso típico:
+            for item in client.iter_listings(market_hash_name="AK-47 | Redline (Field-Tested)", sort_by="lowest_price", limit=50):
+                ...
+
+        Notas:
+        - Si el backend no provee cursor, se devolverá solo la primera página.
+        - Respeta 'limit' enviado por el caller.
+        """
+        params: Dict[str, Any] = dict(filters)
+        cursor: Optional[str] = params.get("cursor")
+        while True:
+            if cursor:
+                params["cursor"] = cursor
+            data, headers = self._get_with_retries("/api/v1/listings", params)
+            items = data.get("data") or []
+            if not isinstance(items, list):
+                # Si el backend devolviera un objeto, tratar de encontrar 'data' lista
+                items = []
+            for it in items:
+                yield it
+            # siguiente página
+            next_cursor = self._extract_next_cursor(headers, data)
+            if not next_cursor:
+                break
+            cursor = next_cursor
+
     def get_lowest_price_cents(self, market_hash_name: str, stattrak: bool) -> Optional[int]:
         """Return lowest listing price in cents for a given market_hash_name.
 
@@ -100,7 +184,7 @@ class CsfloatClient:
             "limit": 50,
             "category": category,
         }
-        data = self._request_with_retries("/api/v1/listings", params)
+        data, _headers = self._get_with_retries("/api/v1/listings", params)
         items = data.get("data") or []
         lowest: Optional[int] = None
         for it in items:

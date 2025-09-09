@@ -19,9 +19,18 @@ Calculadora avanzada en Python que replica con precisión matemática la lógica
 
 - **[Guía de Contratos](docs/guia_contratos.md)**: Mecánicas de CS2 y fórmulas matemáticas
 - **[API CSFloat](docs/api_csfloat.md)**: Integración y endpoints soportados
+- **[TL;DR de API CSFloat](docs/api_csfloat.md#tldr)**: Resumen accionable con filtros y ejemplos
 - **[Arquitectura](docs/structure.md)**: Estructura del proyecto y patrones de diseño
 - **[Stack Técnico](docs/tech.md)**: Tecnologías, convenciones y guías de desarrollo
 - **[Visión del Producto](docs/product.md)**: Objetivos, usuarios objetivo y roadmap
+
+### ⚡ Atajos CSFloat (TL;DR)
+
+| Caso | Ejemplo |
+|------|---------|
+| Listar por nombre con float bajo | `curl -s -H "accept: application/json" -H "authorization: $CSFLOAT_API_KEY" "https://csfloat.com/api/v1/listings?market_hash_name=AK-47%20%7C%20Redline%20(Field-Tested)&max_float=0.16&limit=50&sort_by=lowest_float"` |
+| Detalle por ID | `curl -s -H "accept: application/json" -H "authorization: $CSFLOAT_API_KEY" "https://csfloat.com/api/v1/listings/<ID>"` |
+| Crear listing (buy_now) | `curl -s -X POST "https://csfloat.com/api/v1/listings" -H "accept: application/json" -H "authorization: $CSFLOAT_API_KEY" -H "content-type: application/json" -d '{"asset_id":"21078095468","type":"buy_now","price":8900}'` |
 
 ## 🚀 Instalación Rápida
 

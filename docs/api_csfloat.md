@@ -7,29 +7,107 @@
 - **Documentación Oficial**: https://docs.csfloat.com/#introduction
 - **Autenticación**: Clave API en header `Authorization: <API-KEY>`
 - **Generación de API Key**: Perfil CSFloat → pestaña "Developer"
-- **Límites de Velocidad**: 60 solicitudes por minuto (aplicado por IP)
 - **Formato de Respuesta**: JSON con manejo consistente de errores
 
 ## ℹ️ Alcance del repositorio
 
-- Este repositorio contiene la herramienta CLI en Python. Las referencias a "Web Dashboard" y "proxy server" describen integraciones futuras y no forman parte del código de este repo.
 - Para integrar con CSFloat desde este proyecto, usá la clase `CsfloatClient` del módulo `tradeup.csfloat_api`.
 - Todos los precios devueltos por la API se expresan en centavos.
 
-### Consumo desde Web Dashboard
-El web dashboard consume los mismos endpoints que el CLI a través de un servidor proxy Hono que:
-- **Proxy URL**: `http://localhost:8787/proxy/*` (desarrollo)
-- **Inyección de Auth**: El proxy server inyecta automáticamente la API key desde variables de entorno
-- **Manejo de CORS**: Elimina restricciones de CORS para el frontend React
-- **Rate Limiting**: Implementa rate limiting por IP (60 req/min por defecto)
-- **Retry Logic**: Manejo automático de reintentos con backoff exponencial
+### Política de uso
+- Esta referencia documenta exclusivamente la API HTTP/REST de CSFloat.
+- No cubre frontends, proxys ni SDKs; los ejemplos se presentan en cURL y Python (requests).
+
+<a id="tldr"></a>
+## ⚡ TL;DR (aplicable al proyecto de trade-ups)
+
+### Qué expone la API pública
+- Endpoints de Listings (mercado): listar, consultar detalle por ID y crear listings.
+
+### Autenticación
+- API key vía header: `Authorization: <API-KEY>` (se obtiene en tu perfil → pestaña developer).
+- Algunos endpoints pueden funcionar sin auth, pero el que crea listings requiere siempre `Authorization`.
+
+### Listings (mercado de CSFloat)
+- `GET /api/v1/listings`: lista listings activos, paginación por cursor, máx. `limit=50`.
+  - Filtros clave para este proyecto: `min_float`, `max_float`, `rarity`, `def_index`, `paint_index`, `paint_seed`, `collection`, `market_hash_name`, `category` (any/normal/stattrak/souvenir), `min_price`/`max_price` (centavos), `stickers`, `type` (buy_now/auction).
+  - Ordenamientos: `lowest_price`, `highest_price`, `most_recent`, `expires_soon`, `lowest_float`, `highest_float`, `best_deal`, `highest_discount`, `float_rank`, `num_bids`.
+- `GET /api/v1/listings/{id}`: detalle de un listing (devuelve el objeto aunque esté inactivo).
+- `POST /api/v1/listings`: crear un listing. Body incluye `asset_id`, `type` y `price` (centavos). Opcionales: `max_offer_discount`, `reserve_price`, `duration_days`, `description`, `private`.
+
+### Notas prácticas
+- Precios siempre en centavos (ej.: `260000` ⇒ USD 2600). Evita redondeos; usa enteros.
+- `collection` usa IDs del schema (ej.: `set_bravo_ii`). Si necesitás texto → ID, mantené un mapeo propio.
+- La doc pública no especifica límites exactos; maneja `429` con backoff exponencial.
+
+### Campos clave útiles para trade-ups
+- En `item`: `float_value`, `paint_seed`, `paint_index`, `def_index`, `is_stattrak`, `is_souvenir`, `rarity`, `quality`, `market_hash_name`, `collection`, `stickers[] {stickerId, slot, wear?, scm{price, volume}}`, `inspect_link`.
+
+### Ejemplos mínimos
+- cURL (listar por nombre con float bajo):
+```bash
+curl "https://csfloat.com/api/v1/listings?market_hash_name=AK-47%20%7C%20Redline%20(Field-Tested)&max_float=0.16&limit=50&sort_by=lowest_float" \
+  -H "accept: application/json" \
+  -H "authorization: $CSFLOAT_API_KEY"  # si aplica
+```
+
+- Python (requests) – paginando por cursor si la API lo provee:
+```python
+import requests
+
+BASE = "https://csfloat.com/api/v1/listings"
+params = {
+    "market_hash_name": "CZ75-Auto | Pole Position (Field-Tested)",
+    "min_float": 0.10,
+    "max_float": 0.20,
+    "limit": 50,
+    "sort_by": "lowest_float",
+}
+headers = {"accept": "application/json", "authorization": "<API-KEY>"}  # si aplica
+
+items, cursor = [], None
+while True:
+    if cursor:
+        params["cursor"] = cursor
+    r = requests.get(BASE, params=params, headers=headers, timeout=20)
+    r.raise_for_status()
+    page = r.json()  # la doc muestra un array de listings
+    if not page:
+        break
+    items.extend(page)
+    # Si el backend provee cursor de siguiente página (p. ej., header 'X-Next-Cursor' o en el body), úsalo.
+    cursor = r.headers.get("X-Next-Cursor") or None
+    if not cursor:
+        break
+print(len(items), "listings")
+```
+
+### Cómo encaja en tu calculadora de contratos
+- Inputs: usá `GET /listings` con `market_hash_name` (o `def_index`/`paint_index`) + `min_float`/`max_float` para seleccionar entradas con floats objetivo y precios reales (en centavos).
+- Outputs: consultá precios de salida de los skins objetivo para estimar EV/ROI por outcome.
+- Colecciones y rarezas: filtrá por `collection` y `rarity` para respetar reglas de trade-up.
+- Stickers premium: si tu modelo los considera, `stickers[].scm.price` te permite ajustar precios esperados.
+
+### Limitaciones de la doc pública
+- Solo cubre Listings (listar/consultar/crear). No hay endpoints públicos documentados para inventarios de Steam, buy orders ni estadísticas agregadas.
 
 ## 📋 Endpoints soportados
+
+Antes de los detalles, este es el mapa general de endpoints disponibles según la documentación oficial:
+
+- `GET /api/v1/listings` — Listar listados activos (paginados/filtrables)
+- `GET /api/v1/listings/{id}` — Obtener detalle de un listing por ID
+- `POST /api/v1/listings` — Publicar un ítem (requiere autenticación)
 
 ### 1. `GET /api/v1/listings` - Listados Activos
 
 #### Descripción
 Obtiene listados activos con filtros y ordenamiento. Soporta cursor-based pagination con límite máximo de 50 items.
+
+#### HTTP Request
+```
+GET https://csfloat.com/api/v1/listings
+```
 
 #### Parámetros de Paginación
 | Parámetro | Tipo | Default | Descripción |
@@ -68,6 +146,13 @@ Obtiene listados activos con filtros y ordenamiento. Soporta cursor-based pagina
 | `type` | string | Tipo de listing | `buy_now` o `auction` |
 | `stickers` | string | Formato: ID\|POSITION?[,ID\|POSITION?...] | `"1,2\|0,3\|1"` |
 
+#### Validaciones
+- `limit <= 50`
+- `min_float <= max_float`
+- `category ∈ {0,1,2,3}`
+- `type ∈ {buy_now, auction}`
+- Si se filtra por `market_hash_name`, debe ser exacto.
+
 #### Ejemplo de Wrapper CLI
 ```python
 def get_listings(**filters) -> list[Listing]:
@@ -77,29 +162,45 @@ def get_listings(**filters) -> list[Listing]:
     """
 ```
 
-#### Consumo desde Web Dashboard
-```typescript
-// Frontend React consume el mismo endpoint via proxy
-import { getListings } from '@/lib/api/csfloat'
+#### Notas
+- Las respuestas devueltas son JSON; los precios (`price`, `min_price`, `max_price`) están en centavos.
+- El parámetro `sort_by` acepta: `lowest_price`, `highest_price`, `most_recent`, `expires_soon`, `lowest_float`, `highest_float`, `best_deal`, `highest_discount`, `float_rank`, `num_bids`.
 
-const response = await getListings({
-  sort_by: 'lowest_price',
-  min_float: 0.00,
-  max_float: 0.07,
-  limit: 50
-})
-// Proxy server maneja automáticamente:
-// - Inyección de Authorization header
-// - Rate limiting y retry logic
-// - Transformación de respuesta JSON
+#### Respuesta (JSON)
+```json
+[
+  {
+    "id": "324288155723370196",
+    "created_at": "2021-06-13T20:45:21.311794Z",
+    "type": "buy_now",
+    "price": 260000,
+    "state": "listed",
+    "seller": {
+      "steam_id": "76561198084749846",
+      "username": "Step7750"
+    },
+    "item": {
+      "asset_id": "22547095285",
+      "def_index": 16,
+      "paint_index": 449,
+      "paint_seed": 700,
+      "float_value": 0.0279657766,
+      "market_hash_name": "M4A4 | Poseidon (Factory New)",
+      "wear_name": "Factory New"
+    }
+  }
+]
 ```
-
-Nota sobre formato: el proxy normaliza la respuesta a la forma `{ data: Listing[], cursor?: string }` y reexpone el cursor en el header `x-next-cursor`. El cliente web (`getListings`) también intenta leer `cursor` del cuerpo normalizado si el header no está presente.
 
 ### 2. `GET /api/v1/listings/{id}` - Detalle de listing
 
 #### Descripción
 Obtiene el detalle completo de un listing específico. Devuelve el objeto completo incluso si `state ≠ listed`.
+
+#### HTTP Request
+```
+GET https://csfloat.com/api/v1/listings/{id}
+```
 
 #### Parámetros
 | Parámetro | Tipo | Requerido | Descripción |
@@ -114,14 +215,28 @@ def get_listing(listing_id: str) -> Listing:
     """
 ```
 
-#### Consumo desde Web Dashboard
-```typescript
-// Frontend consume el mismo endpoint para detalles
-import { getListingById } from '@/lib/api/csfloat'
-
-const listing = await getListingById('listing-id-123')
-// Proxy server maneja la autenticación y retry logic
-// Respuesta idéntica a la del CLI Python
+#### Respuesta (JSON)
+```json
+{
+  "id": "324288155723370196",
+  "created_at": "2021-06-13T20:45:21.311794Z",
+  "type": "buy_now",
+  "price": 260000,
+  "state": "listed",
+  "seller": {
+    "steam_id": "76561198084749846",
+    "username": "Step7750"
+  },
+  "item": {
+    "asset_id": "22547095285",
+    "def_index": 16,
+    "paint_index": 449,
+    "paint_seed": 700,
+    "float_value": 0.0279657766,
+    "market_hash_name": "M4A4 | Poseidon (Factory New)",
+    "wear_name": "Factory New"
+  }
+}
 ```
 
 ### 3. `POST /api/v1/listings` - Publicar ítem
@@ -129,17 +244,86 @@ const listing = await getListingById('listing-id-123')
 #### Descripción
 Publica un nuevo ítem en el marketplace. **Requiere Authorization header**.
 
+#### HTTP Request
+```
+POST https://csfloat.com/api/v1/listings
+```
+
 #### Parámetros del Body (JSON)
-| Parámetro | Tipo | Requerido | Descripción | Valores |
-|-----------|------|-----------|-------------|---------|
-| `asset_id` | string | | ID del asset de Steam | - |
-| `type` | string | | Tipo de listing | `buy_now` o `auction` |
-| `price` | int | | Precio en centavos (requerido si buy_now) | - |
-| `max_offer_discount` | int | - | Descuento máximo en ofertas | - |
-| `reserve_price` | int | - | Precio de reserva para subastas | - |
-| `duration_days` | int | - | Duración en días | `1`, `3`, `5`, `7`, `14` |
-| `description` | string | - | Descripción (máximo 180 caracteres) | - |
-| `private` | bool | - | Listing privado | `true`/`false` |
+| Parámetro | Tipo | Requerido | Descripción | Valores/Validación |
+|-----------|------|-----------|-------------|--------------------|
+| `asset_id` | string | ✅ | ID del asset de Steam a publicar | No vacío; debe existir en inventario |
+| `type` | string | ✅ | Tipo de listing | `buy_now` o `auction` |
+| `price` | int | Condicional | Precio en centavos | Requerido si `type = buy_now`; > 0 |
+| `reserve_price` | int | Opcional | Precio de reserva (subasta) | Solo si `type = auction`; ≥ 0 |
+| `duration_days` | int | Opcional | Duración de la subasta en días | Valores permitidos: `1`, `3`, `5`, `7`, `14` |
+| `max_offer_discount` | int | Opcional | Descuento máximo en ofertas | ≥ 0 (centavos) |
+| `description` | string | Opcional | Descripción del listing | Longitud razonable (≈180 chars) |
+| `private` | bool | Opcional | Si el listing es privado | `true`/`false` |
+
+#### Ejemplos de solicitud
+
+```bash
+curl -s -X POST "https://csfloat.com/api/v1/listings" \
+  -H "accept: application/json" \
+  -H "authorization: $CSFLOAT_API_KEY" \
+  -H "content-type: application/json" \
+  -d '{
+    "asset_id": "21078095468",
+    "type": "buy_now",
+    "price": 8900,
+    "description": "Just for show",
+    "private": false
+  }'
+```
+
+```python
+import os, requests
+
+BASE = os.getenv("CSFLOAT_BASE", "https://csfloat.com")
+API_KEY = os.getenv("CSFLOAT_API_KEY")
+headers = {"accept": "application/json", "content-type": "application/json"}
+if API_KEY:
+    headers["authorization"] = API_KEY
+
+payload = {
+  "asset_id": "21078095468",
+  "type": "buy_now",
+  "price": 8900,
+  "description": "Just for show",
+  "private": False
+}
+
+resp = requests.post(f"{BASE}/api/v1/listings", json=payload, headers=headers, timeout=30)
+resp.raise_for_status()
+data = resp.json()
+```
+
+#### Respuesta (JSON)
+```json
+{
+  "id": "292312870132253796",
+  "created_at": "2021-03-17T15:06:59.155367Z",
+  "type": "buy_now",
+  "price": 8900,
+  "description": "Just for show",
+  "state": "listed",
+  "seller": { "obfuscated_id": "9169061817522033479", "online": false },
+  "item": {
+    "asset_id": "21078095468",
+    "def_index": 60,
+    "paint_index": 77,
+    "paint_seed": 346,
+    "float_value": 0.2625382841,
+    "market_hash_name": "M4A1-S | Boreal Forest (Field-Tested)",
+    "wear_name": "Field-Tested"
+  },
+  "min_offer_price": 7565,
+  "max_offer_discount": 1500,
+  "is_watchlisted": false,
+  "watchers": 0
+}
+```
 
 #### Ejemplo de Wrapper CLI
 ```python
@@ -155,192 +339,73 @@ def post_listing(
     """
 ```
 
-#### Nota sobre Web Dashboard
-El endpoint `POST /listings` actualmente **no está implementado** en el web dashboard, ya que se enfoca en exploración y visualización de listings existentes. El proxy server solo maneja endpoints de lectura (`GET`).
-
-## 🔍 Estructura de respuesta
+## Estructura de respuesta
 
 ### Modelo Listing completo
 
-#### Python (Pydantic)
-```python
-class Listing(BaseModel):
-    # Campos principales
-    id: str
-    created_at: datetime
-    type: str                    # "buy_now" | "auction"
-    price: Optional[int]         # En centavos
-    state: Optional[str]         # "listed" | otros estados
-    
-    # Relaciones
-    seller: Seller
-    item: Item
-    
-    # Metadatos
-    min_offer_price: Optional[int]
-    max_offer_discount: Optional[int]
-    is_watchlisted: Optional[bool]
-    watchers: Optional[int]
-    is_seller: Optional[bool]
-```
-
-#### TypeScript (Web Dashboard)
-```typescript
-interface Listing {
-  id: string
-  price: number
-  state: string
-  type: 'buy_now' | 'auction'
-  created_at: string           // ISO string en lugar de datetime
-  seller: Seller
-  item: Item
-  watchers: number
-  min_offer_price?: number
-  max_offer_discount?: number
-}
-```
+#### Esquema JSON (resumen)
+- `id`: string (ID del listing)
+- `created_at`: string (ISO 8601)
+- `type`: `buy_now` | `auction`
+- `price`: number (centavos)
+- `state`: string (`listed`, `sold`, `cancelled`, ...)
+- `seller`: objeto con metadatos del vendedor (incl. `steam_id`, `username`)
+- `item`: objeto con datos del ítem (ver campos clave abajo)
+- `min_offer_price?`, `max_offer_discount?`, `is_watchlisted?`, `watchers?`, `is_seller?`
 
 ### Campos críticos del item
 
-#### Python (Pydantic)
-```python
-class Item(BaseModel):
-    # Identificadores
-    asset_id: str
-    def_index: int
-    
-    # Características del skin
-    paint_index: Optional[int]
-    paint_seed: Optional[int]     # Crítico para tests
-    float_value: Optional[float]  # Crítico para tests
-    
-    # Metadatos
-    market_hash_name: Optional[str]
-    inspect_link: Optional[str]   # Crítico para tests
-    collection: Optional[str]
-    
-    # Stickers y extras
-    stickers: List[Sticker] = Field(default_factory=list)
-    scm: Optional[SCM]
-```
+#### Campos clave del `item` (JSON)
+- `asset_id`: string
+- `def_index`: number
+- `paint_index?`: number
+- `paint_seed?`: number
+- `float_value?`: number (0.0–1.0)
+- `market_hash_name?`: string
+- `inspect_link?`: string
+- `wear_name?`: string ("Factory New", "Minimal Wear", ...)
+- `collection?`: string
+- `stickers?`: array de objetos `{ stickerId, slot, icon_url, name, scm? }`
 
-#### TypeScript (Web Dashboard)
-```typescript
-interface Item {
-  id?: string
-  float_value: number
-  paint_seed: number
-  paint_index: number
-  def_index: number
-  market_hash_name: string
-  wear_name: string
-  collection?: string
-  inspect_link: string
-  serialized_inspect?: string
-  icon_url?: string
-  has_screenshot?: boolean
-  stickers?: Sticker[]
+## Validaciones y tipos de datos
+
+- Fechas: cadenas ISO 8601 en respuestas (`created_at`).
+- Precios: enteros en centavos (p. ej., 8900 = $89.00).
+- Floats: rango [0.0, 1.0].
+- Campos opcionales: pueden estar ausentes o en `null`.
+- Listas: arrays JSON.
+
+## 🧾 Códigos de estado HTTP y errores
+
+### Códigos de estado
+- 200 OK — Solicitud exitosa (GET)
+- 201 Created — Ítem publicado correctamente (POST)
+- 400 Bad Request — Parámetros inválidos o faltantes
+- 401 Unauthorized — Falta o es inválido el header `Authorization`
+- 403 Forbidden — No autorizado para la acción solicitada
+- 404 Not Found — Recurso inexistente (p. ej., listing `id`)
+- 409 Conflict — Conflicto de estado (p. ej., ítem ya listado)
+- 422 Unprocessable Entity — Validación de payload fallida
+- 429 Too Many Requests — Límite de tasa alcanzado (ver header `retry-after`)
+- 5xx Server Error — Error del servidor de CSFloat
+
+### Formato de error (típico)
+```json
+{
+  "error": "Invalid parameter: limit must be <= 50",
+  "status": 400,
+  "code": "INVALID_PARAMETER"
 }
 ```
 
-Notas:
-- `icon_url` y `has_screenshot` se utilizan para renderizar la imagen del ítem en el dashboard.
-- La URL final de imagen se construye con `getItemImageUrl` en `apps/csfloat-dash/src/lib/utils/images.ts`.
+### Soluciones a errores comunes
+- 401 Unauthorized: incluir `Authorization: <API-KEY>`.
+- 400/422 Validation: revisar tipos, rangos (`limit <= 50`, `min_float <= max_float`, `price > 0`).
+- 404 Not Found: verificar `id` del listing/`asset_id`.
+- 409 Conflict: confirmar que el ítem no esté ya listado.
+- 429 Too Many Requests: respetar `retry-after` y aplicar backoff exponencial.
 
-### Validación cross-language
-
-#### Flujo de datos
-```
-CSFloat API → Python Pydantic → JSON → TypeScript Types → React Components
-```
-
-#### Diferencias clave
-| Aspecto | Python | TypeScript |
-|---------|--------|------------|
-| **Fechas** | `datetime` objects | ISO strings |
-| **Opcionales** | `Optional[T]` | `T \| undefined` |
-| **Listas** | `List[T]` | `T[]` |
-| **Validación** | Runtime (Pydantic) | Compile-time + Runtime |
-| **Naming** | `snake_case` | `snake_case` (mantenido) |
-
-#### Validación en Web Dashboard
-- **Compile-time**: TypeScript verifica tipos en desarrollo
-- **Runtime**: Validación implícita via JSON parsing
-- **Error Handling**: Proxy server maneja errores de API y los reenvía al frontend
-
-## 🔄 Proxy server (Web Dashboard)
-
-### Arquitectura del proxy
-El web dashboard utiliza un servidor proxy Hono (`apps/csfloat-dash/server/index.ts`) que actúa como intermediario entre el frontend React y la API de CSFloat:
-
-```
-Frontend React → Proxy Hono (localhost:8787) → CSFloat API (csfloat.com)
-```
-
-### Endpoints del proxy
-| Endpoint Proxy | Endpoint CSFloat | Descripción |
-|----------------|------------------|-------------|
-| `GET /proxy/listings` | `GET /api/v1/listings` | Listados con filtros |
-| `GET /proxy/listings/:id` | `GET /api/v1/listings/:id` | Detalle de listing |
-| `GET /proxy/meta/collections` | `GET /api/v1/listings` (muestreo) | Catálogo agregado de colecciones (cacheado) |
-
-### Procesamiento de requests/responses
-
-#### Inyección de autenticación
-```typescript
-// El proxy inyecta automáticamente la API key
-const headers: Record<string, string> = {
-  accept: 'application/json',
-}
-if (API_KEY) headers['authorization'] = API_KEY
-```
-
-#### Rate limiting por IP
-- **Límite**: 60 requests por minuto por IP (configurable)
-- **Ventana**: 60 segundos (configurable)
-- **Respuesta**: HTTP 429 con header `retry-after`
-
-#### Retry logic con backoff exponencial
-```typescript
-// Delays: [500ms, 1000ms, 2000ms, 4000ms]
-// Reintentos automáticos para:
-// - HTTP 429 (rate limit)
-// - HTTP 5xx (errores de servidor)
-// - Respeta header 'retry-after' de CSFloat
-```
-
-#### Normalización de parámetros (collection)
-- Si el parámetro `collection` llega como nombre "amigable" (por ejemplo, `The Gamma Collection` o `the_gamma_collection`), el proxy lo reescribe a la forma de ID esperada por la API (`set_gamma`).
-- La reescritura usa primero un índice estático (catálogo) y, si no hay match, aplica heurísticas: normaliza, elimina artículos/sufijos y convierte a snake case.
-- Esta lógica mejora la DX del frontend sin cambiar la especificación de la API de CSFloat.
-
-#### Manejo de errores
-- **Transparencia**: Reenvía status codes y headers originales
-- **Logging**: Registra método, path, status y tiempo de respuesta
-- **Headers preservados**: `content-type`, `retry-after`
-
-### Variables de entorno
-```bash
-# Configuración del proxy server
-PORT=8787                    # Puerto del proxy
-CSFLOAT_BASE=https://csfloat.com  # Base URL de CSFloat
-CSFLOAT_API_KEY=your-api-key      # API key (inyectada automáticamente)
-RATE_LIMIT=60                     # Requests por ventana
-RATE_WINDOW_MS=60000             # Ventana en milisegundos
-```
-
-## 🔗 Permalinks y enlaces públicos (Web)
-
-El dashboard ofrece un botón "View on CSFloat" que apunta al permalink público del ítem:
-
-- Preferencia: `https://csfloat.com/item/<ID>`
-  - `getCsfloatPublicUrl(listing)` genera el permalink directo (usa el ID del listing).
-  - `resolveCsfloatPublicUrlWith(listing, getListingById)` intenta obtener `item.id` desde el detalle y usarlo si está disponible.
-- Fallback: `https://csfloat.com/checker?inspect=<inspect_link>`
-  - Si no hay `item.id`, se usa el `inspect_link` (o `serialized_inspect`) disponible.
-  - Prioridad de fuentes cuando no hay `item.id` en el detalle: primero el `inspect` del listing original y luego el del detalle.
-
-Ubicación del helper en frontend: `apps/csfloat-dash/src/lib/utils/url.ts`.
+ 
 
 ## ⚠️ Notas importantes
 
@@ -355,7 +420,7 @@ Ubicación del helper en frontend: `apps/csfloat-dash/src/lib/utils/url.ts`.
 ### Autenticación requerida
 - `POST /listings` **siempre requiere** header `Authorization`
 - `GET` endpoints pueden funcionar sin auth, pero algunos pueden requerir auth para datos completos
-- **Web Dashboard**: La autenticación se maneja automáticamente en el proxy server
+ 
 
 ## 🧪 Ejemplos de uso (prácticos)
 
