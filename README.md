@@ -140,6 +140,34 @@ Estructura del paquete `tradeup/`:
 - `pricing.py`: completado de precios de entradas y outcomes (desde CSFloat o CSV local).
 - `cli.py`: interfaz de línea de comandos con tablas Rich.
 
+### Sincronizar catálogo (Grado) con CSFloat
+
+Incluimos un script auxiliar `fix_grados.py` que corrige la columna `Grado` del catálogo (`data/skins.csv`) usando la API de CSFloat.
+
+Cómo usar (PowerShell en Windows):
+
+```powershell
+# 1) Instalar dependencias
+python -m pip install -r requirements.txt
+
+# 2) Definir tu API key de CSFloat
+$env:CSFLOAT_API_KEY = "TU_API_KEY_AQUI"
+
+# 3) Ejecutar el script (lee data/skins.csv y escribe data/skins_fixed.csv)
+python fix_grados.py
+
+# 4) Usar el catálogo corregido en el CLI
+python -m tradeup.cli --contract contracts/ejemplo_contrato.csv --catalog data/skins_fixed.csv
+```
+
+Detalles:
+
+- Para cada `Arma`, el script prueba `market_hash_name` con los wears: `(Factory New)`, `(Minimal Wear)`, `(Field-Tested)`, `(Well-Worn)`, `(Battle-Scarred)`.
+- Llama a `GET https://csfloat.com/api/v1/listings?market_hash_name=...&limit=1&sort_by=most_recent` y toma `item.rarity`.
+- Mapeo: `1→consumer`, `2→industrial`, `3→mil-spec`, `4→restricted`, `5→classified`, `6→covert`.
+- Si `rarity == 7`: heurística → si el nombre tiene `★` o `Gloves` entonces `extraordinary`, caso contrario `contraband`.
+- También reporta diferencias de colección (`item.collection` vs `Coleccion` del CSV) y filas sin listings.
+
 ## Licencias de terceros
 
 - Verificar términos de CSFloat para uso de su API.
