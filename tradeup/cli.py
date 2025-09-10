@@ -53,7 +53,7 @@ def build_args() -> argparse.Namespace:
         "--fees",
         type=float,
         default=0.02,
-        help="Tasa de comisiones. Default: 0.02 (CSFloat venta)",
+        help="CSFloat sale fee (2%). Se aplica al precio de salida, no al costo.",
     )
     parser.add_argument(
         "--fetch-prices",
@@ -76,6 +76,11 @@ def build_args() -> argparse.Namespace:
             "Formatos soportados: "
             "(1) MarketHashName,PriceCents; (2) Name,Wear,PriceCents[,StatTrak]."
         ),
+    )
+    parser.add_argument(
+        "--json",
+        action="store_true",
+        help="Imprime resumen + outcomes en JSON (además de la salida en tablas).",
     )
     parser.set_defaults(fetch_prices=True)
     return parser.parse_args()
@@ -116,7 +121,7 @@ def print_entries_table(entries):
     console.print(table)
 
 
-def print_outcomes_table(outcomes):
+def print_outcomes_table(outcomes, fees_rate: float):
     table = Table(title="Outcomes (pool de outcomes)", box=box.SIMPLE_HEAVY)
     table.add_column("Outcome")
     table.add_column("Collection")
@@ -125,10 +130,15 @@ def print_outcomes_table(outcomes):
     table.add_column("Out Float", justify="right")
     table.add_column("Wear")
     table.add_column("Price", justify="right")
+    table.add_column(f"Precio neto ({int(fees_rate*100)}%)", justify="right")
     table.add_column("EV contrib.", justify="right")
+    table.add_column("EV neto contrib.", justify="right")
 
-    for o in outcomes:
-        ev_contrib = (o.price_cents or 0) * o.prob if o.price_cents is not None else None
+    for o in sorted(outcomes, key=lambda x: ((x.price_cents or 0) * (1 - fees_rate) * x.prob), reverse=True):
+        price = o.price_cents
+        price_net = round(price * (1 - fees_rate)) if price is not None else None
+        ev_contrib = (price or 0) * o.prob if price is not None else None
+        ev_net_contrib = (price_net or 0) * o.prob if price is not None else None
         table.add_row(
             o.name,
             o.collection,
@@ -136,22 +146,78 @@ def print_outcomes_table(outcomes):
             f"{o.prob*100:.2f}%",
             f"{o.out_float:.5f}",
             o.wear_name,
-            human_cents(o.price_cents),
+            human_cents(price),
+            human_cents(price_net),
             human_cents(ev_contrib),
+            human_cents(ev_net_contrib),
         )
     console.print(table)
 
 
-def print_summary(res):
+def print_decision_and_summary(res):
+    # Línea de decisión
+    decision = None
+    if res.total_inputs_cost_cents is not None and res.ev_net_cents is not None:
+        decision = "✅ RENTABLE" if res.ev_net_cents >= res.total_inputs_cost_cents else "❌ NO rentable"
+    else:
+        decision = "❔ Incompleto (faltan precios)"
+    console.print(f"[bold]{decision}[/bold]")
+
+    # Tabla de KPIs (pares)
     table = Table(title="Resumen", box=box.SIMPLE_HEAVY)
     table.add_column("Métrica")
     table.add_column("Valor", justify="right")
+    table.add_column("Métrica")
+    table.add_column("Valor", justify="right")
 
-    table.add_row("Costo total entradas", human_cents(res.total_inputs_cost_cents))
-    table.add_row("EV bruto", human_cents(res.ev_gross_cents))
-    table.add_row("EV neto (fees)", human_cents(res.ev_net_cents))
-    table.add_row("Fees (tasa)", f"{res.fees_rate*100:.1f}%")
-    table.add_row("ROI neto", f"{res.roi_net*100:.2f}%" if res.roi_net is not None else "-")
+    total = res.total_inputs_cost_cents
+    avg_per_skin = (total / 10) if total is not None else None
+
+    def pct(x: Optional[float]) -> str:
+        return f"{x*100:.2f}%" if x is not None else "-"
+
+    # 1) Costos
+    table.add_row(
+        "Costo total entradas", human_cents(total),
+        "Costo promedio por skin", human_cents(avg_per_skin),
+    )
+    # 2) EV
+    table.add_row(
+        "EV bruto", human_cents(res.ev_gross_cents),
+        f"EV neto ({int(res.fees_rate*100)}%)", human_cents(res.ev_net_cents),
+    )
+    # 3) P&L neto y ROI neto (coloreado)
+    pl = res.pl_expected_net_cents
+    roi = res.roi_net
+    pl_str = human_cents(pl)
+    roi_str = pct(roi)
+    if pl is not None and pl < 0:
+        pl_str = f"[red]{pl_str}[/red]"
+    if pl is not None and pl >= 0:
+        pl_str = f"[green]{pl_str}[/green]"
+    if roi is not None and roi < 0:
+        roi_str = f"[red]{roi_str}[/red]"
+    if roi is not None and roi >= 0:
+        roi_str = f"[green]{roi_str}[/green]"
+    table.add_row(
+        "P&L esperado (neto)", pl_str,
+        "ROI neto", roi_str,
+    )
+    # 4) Prob. de beneficio y Break-even
+    table.add_row(
+        "Prob. de beneficio", pct(res.prob_profit),
+        "Break-even precio medio de venta", human_cents(res.break_even_price_cents),
+    )
+    # 5) Costos máximos para break-even
+    table.add_row(
+        "Costo máx. break-even (total)", human_cents(res.max_break_even_cost_total_cents),
+        "Costo máx. por skin", human_cents(res.max_break_even_cost_per_skin_cents),
+    )
+    # 6) Relaciones bruta y neta
+    table.add_row(
+        "Relación promedio/costo (bruta)", pct(res.roi_simple_ratio),
+        "Relación neta/costo", pct(res.roi_simple_net_ratio),
+    )
 
     console.print(table)
 
@@ -188,9 +254,11 @@ def main():
 
         # Resumen y tablas
         res = summarize_contract(entries, outcomes, fees_rate=args.fees)
+        # Primero la decisión + KPIs
+        print_decision_and_summary(res)
+        # Luego, tablas de outcomes y entradas
+        print_outcomes_table(outcomes, fees_rate=res.fees_rate)
         print_entries_table(entries)
-        print_outcomes_table(outcomes)
-        print_summary(res)
 
         # Notas
         if price_source_note:
@@ -203,6 +271,44 @@ def main():
             else:
                 console.print("[dim]Nota: no se cargaron precios. Pasá --local-prices o --fetch-prices, o completá PriceCents en el CSV del contrato. EV/ROI pueden quedar en '-'.[/dim]")
         console.print("[dim]Modelo de probabilidades: pool de outcomes, como TradeUpSpy.[/dim]")
+
+        # Export JSON opcional
+        if args.json:
+            # Recalcular decisión localmente para incluir en el payload
+            if res.total_inputs_cost_cents is not None and res.ev_net_cents is not None:
+                decision = "✅ RENTABLE" if res.ev_net_cents >= res.total_inputs_cost_cents else "❌ NO rentable"
+            else:
+                decision = "❔ Incompleto (faltan precios)"
+            payload = {
+                "decision": decision,
+                "fees_rate": res.fees_rate,
+                "summary": {
+                    "total_cost_cents": res.total_inputs_cost_cents,
+                    "ev_gross_cents": res.ev_gross_cents,
+                    "ev_net_cents": res.ev_net_cents,
+                    "pl_expected_net_cents": res.pl_expected_net_cents,
+                    "roi_net": res.roi_net,
+                    "prob_profit": res.prob_profit,
+                    "break_even_price_cents": res.break_even_price_cents,
+                    "max_break_even_cost_total_cents": res.max_break_even_cost_total_cents,
+                    "max_break_even_cost_per_skin_cents": res.max_break_even_cost_per_skin_cents,
+                    "ratio_avg_cost_bruta": res.roi_simple_ratio,
+                    "ratio_avg_cost_neta": res.roi_simple_net_ratio,
+                },
+                "outcomes": [
+                    {
+                        "name": o.name,
+                        "collection": o.collection,
+                        "rarity": o.rarity,
+                        "prob": o.prob,
+                        "out_float": o.out_float,
+                        "wear": o.wear_name,
+                        "price_cents": o.price_cents,
+                    }
+                    for o in outcomes
+                ],
+            }
+            console.print_json(data=payload)
 
     except ContractValidationError as e:
         console.print(f"[bold red]Error de contrato:[/bold red] {e}")

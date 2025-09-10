@@ -75,7 +75,18 @@ class ContractResult:
     ev_gross_cents: Optional[float]
     ev_net_cents: Optional[float]
     roi_net: Optional[float]
-    fees_rate: float = 0.15
+    fees_rate: float = 0.02
+    # Nuevas métricas solicitadas: promedio simple de precios de outcomes y ROI simple (promedio/costo)
+    avg_outcome_price_cents: Optional[float] = None
+    roi_simple_ratio: Optional[float] = None
+    # Métricas de decisión adicionales
+    pl_expected_net_cents: Optional[float] = None
+    prob_profit: Optional[float] = None
+    break_even_price_cents: Optional[float] = None  # precio medio de venta requerido
+    max_break_even_cost_total_cents: Optional[float] = None
+    max_break_even_cost_per_skin_cents: Optional[float] = None
+    # Relación neta/costo (promedio simple aplicando fee de venta)
+    roi_simple_net_ratio: Optional[float] = None
 
 
 # Utilidades de wear

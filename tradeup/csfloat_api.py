@@ -30,15 +30,27 @@ def build_market_hash_name(name: str, wear_name: str, stattrak: bool) -> str:
 class CsfloatClient:
     """Minimal CSFloat client for GET /api/v1/listings.
 
-    Note: All prices are in cents.
+    Notas:
+    - Todos los precios están en centavos.
+    - Incluye caché en memoria con TTL opcional para consultas de precio mínimo por `market_hash_name`.
     """
 
-    def __init__(self, api_key: Optional[str] = None, base_url: Optional[str] = None, timeout: float = 15.0) -> None:
+    def __init__(
+        self,
+        api_key: Optional[str] = None,
+        base_url: Optional[str] = None,
+        timeout: float = 15.0,
+        ttl_seconds: Optional[float] = 300.0,
+        max_pages: int = 3,
+    ) -> None:
         self.api_key = api_key or get_api_key()
         self.base_url = base_url or BASE_URL
         self.timeout = timeout
+        self.ttl_seconds = ttl_seconds
+        self.max_pages = max_pages
         self.session = requests.Session()
-        self._cache: Dict[Tuple[str, int], Optional[int]] = {}
+        # cache key: (market_hash_name, category) -> (price_cents_or_None, expires_at_epoch_or_0)
+        self._cache: Dict[Tuple[str, int], Tuple[Optional[int], float]] = {}
 
     def _headers(self) -> Dict[str, str]:
         headers = {"accept": "application/json"}
@@ -46,42 +58,7 @@ class CsfloatClient:
             headers["authorization"] = self.api_key
         return headers
 
-    def _request_with_retries(self, path: str, params: Dict[str, Any], retries: int = 4) -> Dict[str, Any]:
-        url = f"{self.base_url}{path}"
-        backoffs = [0.5, 1.0, 2.0, 4.0]
-        last_err: Optional[Exception] = None
-        for attempt in range(retries):
-            try:
-                resp = self.session.get(url, headers=self._headers(), params=params, timeout=self.timeout)
-                if resp.status_code == 429:
-                    # rate limited, check retry-after or backoff
-                    retry_after = float(resp.headers.get("retry-after", backoffs[min(attempt, len(backoffs)-1)]))
-                    time.sleep(retry_after)
-                    continue
-                if 500 <= resp.status_code < 600:
-                    time.sleep(backoffs[min(attempt, len(backoffs)-1)])
-                    continue
-                resp.raise_for_status()
-                data = resp.json()
-                # normalize expected shape
-                if isinstance(data, dict) and "data" in data:
-                    return data
-                if isinstance(data, list):
-                    return {"data": data}
-                return data
-            except Exception as e:  # broad catch to retry on network issues
-                last_err = e
-                time.sleep(backoffs[min(attempt, len(backoffs)-1)])
-                continue
-        # final attempt without catching to propagate
-        resp = self.session.get(url, headers=self._headers(), params=params, timeout=self.timeout)
-        resp.raise_for_status()
-        data = resp.json()
-        if isinstance(data, dict) and "data" in data:
-            return data
-        if isinstance(data, list):
-            return {"data": data}
-        return data
+    
 
     def _get_with_retries(self, path: str, params: Dict[str, Any], retries: int = 4) -> Tuple[Dict[str, Any], Dict[str, str]]:
         """GET con reintentos que devuelve (data_normalizada, headers).
@@ -168,15 +145,27 @@ class CsfloatClient:
             cursor = next_cursor
 
     def get_lowest_price_cents(self, market_hash_name: str, stattrak: bool) -> Optional[int]:
-        """Return lowest listing price in cents for a given market_hash_name.
+        """Devuelve el menor precio listado en centavos para un `market_hash_name`.
 
-        The API supports filtering by market_hash_name and category:
+        Implementación:
+        - Usa `iter_listings()` con paginación por cursor hasta `max_pages` (por defecto 3).
+        - Filtra por `market_hash_name` exacto cuando el backend lo provee en cada item.
+        - Valida la categoría con StatTrak cuando esté disponible en el item.
+        - Ignora precios faltantes o no positivos.
+        - Aplica caché en memoria con TTL opcional configurada en el constructor.
+
+        API params relevantes:
         - category: 1 normal, 2 stattrak, 3 souvenir
         """
         category = 2 if stattrak else 1
         cache_key = (market_hash_name, category)
-        if cache_key in self._cache:
-            return self._cache[cache_key]
+        # cache hit con TTL válida
+        cached = self._cache.get(cache_key)
+        now = time.time()
+        if cached is not None:
+            value, expires_at = cached
+            if expires_at == 0 or expires_at > now:
+                return value
 
         params: Dict[str, Any] = {
             "sort_by": "lowest_price",
@@ -184,17 +173,44 @@ class CsfloatClient:
             "limit": 50,
             "category": category,
         }
-        data, _headers = self._get_with_retries("/api/v1/listings", params)
-        items = data.get("data") or []
+
         lowest: Optional[int] = None
-        for it in items:
-            # Support both raw API and proxied normalized shape
-            price = it.get("price") if isinstance(it, dict) else None
-            if price is None:
+        taken = 0
+        page_item_cap = params["limit"] * max(1, int(self.max_pages))
+        for it in self.iter_listings(**params):
+            taken += 1
+            if taken > page_item_cap:
+                break
+            if not isinstance(it, dict):
                 continue
-            if lowest is None or price < lowest:
-                lowest = price
-        self._cache[cache_key] = lowest
+            # precio
+            price = it.get("price")
+            if price is None or not isinstance(price, (int, float)):
+                continue
+            price_int = int(price)
+            if price_int <= 0:
+                continue
+            # validar MHN si viene en el item
+            mhn_item = it.get("market_hash_name") or it.get("name")
+            if isinstance(mhn_item, str) and mhn_item and mhn_item != market_hash_name:
+                continue
+            # validar categoría/stattrak si se expone
+            item_category = it.get("category")
+            if isinstance(item_category, int) and item_category not in (1, 2, 3):
+                # categoría inesperada -> ignorar
+                continue
+            if isinstance(item_category, int) and item_category != category:
+                continue
+            item_st = it.get("stattrak")
+            if isinstance(item_st, bool) and (item_st != stattrak):
+                continue
+
+            if lowest is None or price_int < lowest:
+                lowest = price_int
+
+        # guardar en caché (respeta TTL si se configuró, 0 = sin expiración)
+        expires_at = 0.0 if self.ttl_seconds in (None, 0) else now + float(self.ttl_seconds)
+        self._cache[cache_key] = (lowest, expires_at)
         return lowest
 
 
