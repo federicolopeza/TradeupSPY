@@ -53,7 +53,7 @@ def main() -> None:
     ap.add_argument("--fail-dir", default="contracts/FAIL", help="Carpeta para contratos NO rentables")
     ap.add_argument("--sleep", type=float, default=1.5, help="Pausa entre contratos (segundos)")
     ap.add_argument("--max", type=int, default=0, help="Máximo a evaluar (0=todos)")
-    ap.add_argument("--fees", type=float, default=0.02, help="Fee de venta (2% CSFloat)")
+    ap.add_argument("--fees", type=float, default=0.02, help="Fee de venta (2%% CSFloat)")
     ap.add_argument(
         "--extra-cli-flags",
         default="",
