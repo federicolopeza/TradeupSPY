@@ -1,7 +1,26 @@
-tradeup/__pycache__/__init__.cpython-313.pyc
-tradeup/__pycache__/cli.cpython-313.pyc
-tradeup/__pycache__/contracts.cpython-313.pyc
-tradeup/__pycache__/csfloat_api.cpython-313.pyc
-tradeup/__pycache__/csv_loader.cpython-313.pyc
-tradeup/__pycache__/models.cpython-313.pyc
-tradeup/__pycache__/pricing.cpython-313.pyc
+# Python cache files
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+
+# Contract generation output
+contracts/
+# Logs and results
+scan_results.csv
+errors/
+
+# IDE and editor files
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS generated files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
