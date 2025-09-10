@@ -3,7 +3,7 @@
 ## 🛠️ Tecnologías Principales
 
 ### 🐍 Entorno de Ejecución
-- **Python 3.10+**: Lenguaje principal con soporte completo para type hints modernos, dataclasses y pattern matching
+- **Python 3.10+**: Lenguaje principal con soporte completo para type hints modernos, dataclasses y pattern matching (probado con Python 3.13)
 - **Compatibilidad Multiplataforma**: Windows (desarrollo primario), macOS, Linux
 - **Gestión de Dependencias**: pip con requirements.txt para reproducibilidad de entornos
 - **Entornos Virtuales**: venv recomendado para aislamiento de dependencias
@@ -151,6 +151,11 @@ python -m pip install -r requirements-dev.txt
 python -m tradeup.cli --help
 ```
 
+> Nota: si no contás con `requirements-dev.txt`, podés instalar herramientas de desarrollo manualmente:
+```bash
+python -m pip install mypy black flake8 pytest-cov -U
+```
+
 ### Configuración de entorno
 ```bash
 # Copy template
@@ -196,7 +201,7 @@ python -m tradeup.cli \
 python fix_grados.py
 
 # Validate catalog integrity
-python -c "from tradeup.csv_loader import load_catalog; print(f'Loaded {len(load_catalog())} skins')"
+python -c "from tradeup.csv_loader import read_catalog_csv; c = read_catalog_csv('data/skins.csv'); print(f'Loaded {len(c.items)} skins')"
 ```
 
 ### Testing
@@ -205,10 +210,11 @@ python -c "from tradeup.csv_loader import load_catalog; print(f'Loaded {len(load
 python -m pytest
 
 # Run with coverage
-python -m pytest --cov=tradeup
+python -m pytest --cov=tradeup  # requiere plugin pytest-cov
 
 # Run specific test file
-python -m pytest tests/test_contracts.py
+python -m pytest tests/test_metrics.py
+python -m pytest tests/test_wear.py
 
 # Run with verbose output
 python -m pytest -v

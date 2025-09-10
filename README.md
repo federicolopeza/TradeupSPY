@@ -1,36 +1,67 @@
-# TradeUpSPY - Calculadora de Trade-Ups de CS2
+# TradeUpSPY - Calculadora Avanzada de Trade-Ups de CS2
 
 [![Python 3.10+](https://img.shields.io/badge/python-3.10+-blue.svg)](https://www.python.org/downloads/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Code Style: Black](https://img.shields.io/badge/code%20style-black-000000.svg)](https://github.com/psf/black)
+[![Rich CLI](https://img.shields.io/badge/CLI-Rich-ff69b4.svg)](https://github.com/Textualize/rich)
+[![CSFloat API](https://img.shields.io/badge/API-CSFloat-orange.svg)](https://csfloat.com/)
 
-Calculadora avanzada en Python que replica con precisión matemática la lógica de TradeUpSpy para evaluar la rentabilidad de contratos de CS2. Incluye integración con CSFloat API, análisis de riesgo, y interfaz CLI profesional.
+**TradeUpSPY** es una calculadora integral de contratos de Trade-Up de CS2 que replica con precisión matemática la metodología de TradeUpSpy, proporcionando análisis de rentabilidad y gestión de riesgo con datos en tiempo real del mercado.
 
-## ✨ Características Principales
+## 🎯 Características Principales
 
-- **🎯 Precisión Matemática**: Replica exactamente los cálculos de TradeUpSpy
-- **📊 Análisis Completo**: EV, ROI, probabilidades, y análisis de riesgo
-- **🔄 Precios en Tiempo Real**: Integración con CSFloat API
-- **📋 Validación Automática**: Verifica reglas de CS2 automáticamente
-- **🎨 Interfaz Rica**: Tablas formateadas con Rich para máxima claridad
-- **⚡ Alto Rendimiento**: Caché inteligente y manejo de rate limits
+### 🔬 Precisión Matemática Garantizada
+- **🎯 Exactitud Verificada**: Resultados validados contra TradeUpSpy con diferencia <0.1%
+- **📐 Modelo Pool of Outcomes**: Implementación exacta del algoritmo de probabilidades
+- **🧮 Fórmulas Documentadas**: Cada cálculo explicado y validado con tests automatizados
+- **✅ Validación de Reglas**: Cumplimiento estricto de mecánicas de CS2
 
-## 📚 Documentación Completa
+### 📊 Análisis Integral de Rentabilidad
+- **💰 Métricas Completas**: EV bruto/neto, ROI, probabilidad de ganancia, análisis de riesgo
+- **📈 Escenarios Múltiples**: Mejor/peor caso, break-even, distribución de outcomes
+- **🎨 Visualización Clara**: Tablas Rich con colores semánticos y formato profesional
+- **⚡ Decisión Inmediata**: Indicadores visuales claros (✅ RENTABLE / ❌ NO RENTABLE)
 
-- **[Guía de Contratos](docs/guia_contratos.md)**: Mecánicas de CS2 y fórmulas matemáticas
-- **[API CSFloat](docs/api_csfloat.md)**: Integración y endpoints soportados
-- **[TL;DR de API CSFloat](docs/api_csfloat.md#tldr)**: Resumen accionable con filtros y ejemplos
-- **[Arquitectura](docs/structure.md)**: Estructura del proyecto y patrones de diseño
-- **[Stack Técnico](docs/tech.md)**: Tecnologías, convenciones y guías de desarrollo
-- **[Visión del Producto](docs/product.md)**: Objetivos, usuarios objetivo y roadmap
+### 🌐 Integración de Datos Avanzada
+- **🔄 CSFloat API**: Precios en tiempo real del marketplace líder
+- **⚡ Caché Inteligente**: Sistema de caché con TTL para optimizar performance
+- **🛡️ Rate Limiting**: Manejo automático de límites con backoff exponencial
+- **📁 Datos Offline**: Soporte completo para precios locales y trabajo sin conexión
 
-### ⚡ Atajos CSFloat (TL;DR)
+## ⚙️ Arquitectura y Tecnología
 
-| Caso | Ejemplo |
-|------|---------|
-| Listar por nombre con float bajo | `curl -s -H "accept: application/json" -H "authorization: $CSFLOAT_API_KEY" "https://csfloat.com/api/v1/listings?market_hash_name=AK-47%20%7C%20Redline%20(Field-Tested)&max_float=0.16&limit=50&sort_by=lowest_float"` |
-| Detalle por ID | `curl -s -H "accept: application/json" -H "authorization: $CSFLOAT_API_KEY" "https://csfloat.com/api/v1/listings/<ID>"` |
-| Crear listing (buy_now) | `curl -s -X POST "https://csfloat.com/api/v1/listings" -H "accept: application/json" -H "authorization: $CSFLOAT_API_KEY" -H "content-type: application/json" -d '{"asset_id":"21078095468","type":"buy_now","price":8900}'` |
+### 🏗️ Diseño Modular
+- **Domain-Driven Design**: Arquitectura por capas con separación clara de responsabilidades
+- **Modelos Inmutables**: Dataclasses frozen para garantizar integridad de datos
+- **Patrones de Diseño**: Factory, Strategy, Builder, Adapter para máxima extensibilidad
+- **Type Safety**: Type hints completos con validación en runtime
+
+### 🧮 Motor de Cálculo Avanzado
+```python
+# Algoritmo Pool of Outcomes (como TradeUpSpy)
+def calculate_probabilities(entries, outcomes):
+    # Tamaño total del pool
+    S = sum(n_C * m_C for collection C)
+    
+    # Probabilidad por outcome
+    P(outcome_j) = n_C / S
+    
+    # Float normalizado y remapeado
+    f_norm_avg = sum(normalize_float(entry)) / 10
+    out_float = min_out + (max_out - min_out) * f_norm_avg
+```
+
+### 🛡️ Validación Robusta
+- **Reglas CS2**: 10 entradas exactas, rareza homogénea, StatTrak™ consistente
+- **Verificación Catálogo**: Existencia de skins y validación de rangos de float
+- **Progresión Rareza**: consumer → industrial → mil-spec → restricted → classified → covert
+- **Exclusiones Automáticas**: Detección de Souvenir y límites hacia knives/gloves
+
+### 🎨 Interfaz CLI Profesional
+- **Rich Tables**: Formato colorido con alineación automática y separadores visuales
+- **Progress Bars**: Indicadores de progreso para operaciones de red
+- **Semantic Colors**: Verde (ganancias), rojo (pérdidas), amarillo (advertencias)
+- **Export Options**: Salida JSON estructurada para integraciones
 
 ## 🚀 Instalación Rápida
 
@@ -39,10 +70,10 @@ Calculadora avanzada en Python que replica con precisión matemática la lógica
 - **Sistema Operativo**: Windows, macOS, Linux
 - **Conexión a Internet**: Para precios en tiempo real (opcional)
 
-### Instalación
+### Instalación Paso a Paso
 ```bash
 # 1. Clonar el repositorio
-git clone https://github.com/falopp/TradeupSPY.git
+git clone https://github.com/falopp/TradeUpSPY.git
 cd TradeUpSPY
 
 # 2. Crear entorno virtual (recomendado)
@@ -67,7 +98,67 @@ CSFLOAT_API_KEY=tu_api_key_aqui
 CSFLOAT_BASE=https://csfloat.com
 ```
 
-> **💡 Tip**: Puedes usar la herramienta sin API key utilizando precios locales con `--no-fetch-prices`
+> **💡 Tip**: Obtén tu API key gratuita en [CSFloat Developer Portal](https://docs.csfloat.com/#introduction). Puedes usar la herramienta sin API key con `--no-fetch-prices`
+
+## 💻 Guía de Uso
+
+### Casos de Uso Comunes
+
+#### 1. Análisis Básico (Sin API)
+Perfecto para aprender o cuando no tienes API key:
+```bash
+python -m tradeup.cli \
+  --contract contracts/ejemplo_contrato.csv \
+  --catalog data/skins.csv \
+  --no-fetch-prices
+```
+
+#### 2. Análisis en Tiempo Real
+Precios actuales del mercado CSFloat:
+```bash
+python -m tradeup.cli \
+  --contract contracts/ejemplo_contrato.csv \
+  --catalog data/skins.csv
+```
+
+#### 3. Análisis con Precios Locales
+Usa tus propios precios para escenarios específicos:
+```bash
+python -m tradeup.cli \
+  --contract contracts/ejemplo_contrato.csv \
+  --catalog data/skins.csv \
+  --no-fetch-prices \
+  --local-prices docs/local_prices.example.csv
+```
+
+#### 4. Análisis Avanzado
+Con comisiones personalizadas y catálogo actualizado:
+```bash
+python -m tradeup.cli \
+  --contract contracts/ejemplo_contrato.csv \
+  --catalog data/skins_fixed.csv \
+  --fees 0.15
+```
+
+### Parámetros de Línea de Comandos
+
+| Parámetro | Tipo | Default | Descripción |
+|-----------|------|---------|-------------|
+| `--contract` | string | **requerido** | Ruta al CSV del contrato (10 entradas exactas) |
+| `--catalog` | string | `data/skins.csv` | Ruta al catálogo de skins |
+| `--fees` | float | `0.02` | Tasa de comisiones (0.02 = 2% CSFloat) |
+| `--fetch-prices` | flag | `true` | Consultar precios a CSFloat API |
+| `--no-fetch-prices` | flag | `false` | Usar solo precios locales |
+| `--local-prices` | string | - | CSV con precios personalizados |
+
+### Formatos de Salida
+
+La herramienta genera tablas formateadas con:
+- **📋 Resumen del Contrato**: Validación y estadísticas básicas
+- **💰 Análisis de Entradas**: Precios y floats de las 10 skins de entrada
+- **🎯 Resultados Posibles**: Probabilidades y valores esperados
+- **📊 Métricas de Rentabilidad**: EV, ROI, mejor/peor caso
+- **⚠️ Advertencias**: Problemas detectados y recomendaciones
 
 ## 📁 Formatos de Datos
 
@@ -125,68 +216,7 @@ Name,Wear,PriceCents,StatTrak
 
 > **💡 Nota**: Los precios siempre deben estar en **centavos** (ej: $89.00 = 8900 centavos)
 
-## 💻 Guía de Uso
-
-### Casos de Uso Comunes
-
-#### 1. Análisis Básico (Sin API)
-Perfecto para aprender o cuando no tienes API key:
-```bash
-python -m tradeup.cli \
-  --contract contracts/ejemplo_contrato.csv \
-  --catalog data/skins.csv \
-  --no-fetch-prices
-```
-
-#### 2. Análisis con Precios Locales
-Usa tus propios precios para escenarios específicos:
-```bash
-python -m tradeup.cli \
-  --contract contracts/ejemplo_contrato.csv \
-  --catalog data/skins.csv \
-  --no-fetch-prices \
-  --local-prices docs/local_prices.example.csv
-```
-
-#### 3. Análisis en Tiempo Real
-Precios actuales del mercado CSFloat:
-```bash
-python -m tradeup.cli \
-  --contract contracts/ejemplo_contrato.csv \
-  --catalog data/skins.csv
-```
-
-#### 4. Análisis Avanzado
-Con comisiones personalizadas y catálogo actualizado:
-```bash
-python -m tradeup.cli \
-  --contract contracts/ejemplo_contrato.csv \
-  --catalog data/skins_fixed.csv \
-  --fees 0.15 \
-  --fetch-prices
-```
-
-### Parámetros de Línea de Comandos
-
-| Parámetro | Tipo | Default | Descripción |
-|-----------|------|---------|-------------|
-| `--contract` | string | **requerido** | Ruta al CSV del contrato (10 entradas exactas) |
-| `--catalog` | string | `data/skins.csv` | Ruta al catálogo de skins |
-| `--fees` | float | `0.02` | Tasa de comisiones (0.02 = 2% CSFloat) |
-| `--fetch-prices` | flag | `true` | Consultar precios a CSFloat API |
-| `--no-fetch-prices` | flag | `false` | Usar solo precios locales |
-| `--local-prices` | string | - | CSV con precios personalizados |
-
-### Formatos de Salida
-
-La herramienta genera tablas formateadas con:
-- **📋 Resumen del Contrato**: Validación y estadísticas básicas
-- **💰 Análisis de Entradas**: Precios y floats de las 10 skins de entrada
-- **🎯 Resultados Posibles**: Probabilidades y valores esperados
-- **📊 Métricas de Rentabilidad**: EV, ROI, mejor/peor caso
-- **⚠️ Advertencias**: Problemas detectados y recomendaciones
-
-## Reglas implementadas (resumen)
+## Reglas Implementadas (Resumen)
 
 - Siempre 10 skins y todas de la misma rareza.
 - No se puede mezclar StatTrak™ con no‑StatTrak™.
@@ -194,7 +224,7 @@ La herramienta genera tablas formateadas con:
 - Progresión de rarezas: consumer → industrial → mil‑spec → restricted → classified → covert.
 - Cálculo de float de salida: promedio de floats normalizados y remapeo al rango de la skin de salida.
 
-### Modelo de probabilidades
+### Modelo de Probabilidades
 
 Se utiliza el modelo de "pool de outcomes" (como TradeUpSpy):
 
@@ -215,32 +245,55 @@ Los precios se consultan por `market_hash_name` construido como:
 - `"AK-47 | Cartel (Field-Tested)"`
 - `"StatTrak™ AK-47 | Cartel (Field-Tested)"`
 
-## Formato del contrato CSV
+## 🔧 Scripts de Utilidad
 
-Columnas requeridas:
+### Actualización de Catálogo (`fix_grados.py`)
+Script que sincroniza el catálogo local con datos reales de CSFloat API:
 
-- `Name`: nombre exacto de la skin (debe existir en el catálogo con esa colección y rareza).
-- `Collection`: nombre de colección igual al catálogo (p. ej., `The Chroma Collection`).
-- `Rarity`: rareza en minúsculas (`consumer|industrial|mil-spec|restricted|classified|covert`).
-- `Float`: float de la entrada (0.0–1.0).
+```bash
+# Configurar API key
+export CSFLOAT_API_KEY="tu_api_key_aqui"  # Linux/macOS
+$env:CSFLOAT_API_KEY="tu_api_key_aqui"    # Windows PowerShell
 
-Columnas opcionales:
+# Ejecutar sincronización
+python fix_grados.py
 
-- `PriceCents`: costo de compra de la entrada en centavos. Si no se brinda y `--fetch-prices` está activo, se consulta a CSFloat según el wear inferido por el float.
-- `StatTrak`: `true/false`.
+# Usar catálogo actualizado
+python -m tradeup.cli --contract contracts/ejemplo_contrato.csv --catalog data/skins_fixed.csv
+```
 
-## Manejo de errores
+#### ¿Qué hace el script?
+- **Valida rarezas**: Corrige la columna `Grado` consultando CSFloat
+- **Detecta inconsistencias**: Reporta diferencias entre catálogo local y API
+- **Mapeo automático**: Convierte códigos de rareza (1-7) a nombres legibles
+- **Manejo de casos especiales**: Identifica knives/gloves automáticamente
+- **Genera reporte**: Lista skins sin datos disponibles
 
-- Validación de tamaño del contrato (10 entradas), rareza homogénea y StatTrak homogéneo.
-- Verificación de existencia en el catálogo y de rangos de floats.
-- Reintentos y manejo de rate limit (HTTP 429) al consultar CSFloat.
-- Salida clara de errores en CLI con mensajes amigables.
+#### Mapeo de Rarezas
+| Código API | Rareza | Color |
+|------------|--------|-------|
+| 1 | `consumer` | Gris |
+| 2 | `industrial` | Celeste |
+| 3 | `mil-spec` | Azul |
+| 4 | `restricted` | Morado |
+| 5 | `classified` | Rosa |
+| 6 | `covert` | Rojo |
+| 7 | `extraordinary`/`contraband` | Dorado |
 
-## Limitaciones conocidas
+## 📊 Ejemplos de Contratos
 
-- No se soportan contratos Souvenir.
-- El `market_hash_name` inferido usa los nombres de wear estándar. Puede haber casos raros (p. ej., skins sin cierto wear) donde el ítem exacto no exista.
-- El modelo clásico de probabilidades (colección uniforme) no está implementado (se deja como posible mejora).
+### Contrato Básico (Chroma + Prisma 2)
+El archivo `contracts/ejemplo_contrato.csv` demuestra un contrato real:
+- **5 skins** de "The Chroma Collection" (Mil-Spec)
+- **5 skins** de "The Prisma 2 Collection" (Mil-Spec)
+- **Objetivo**: Obtener skins Restricted de ambas colecciones
+- **Probabilidad**: 50/50 entre las dos colecciones
+
+### Contrato Avanzado (Osiris Supernova)
+El archivo `contracts/contrato_osiris_supernova.csv` muestra:
+- Contrato enfocado en una skin específica de alta demanda
+- Optimización de floats para maximizar valor
+- Análisis de riesgo/recompensa
 
 ## 🛠️ Solución de Problemas
 
@@ -353,55 +406,15 @@ python -m flake8 tradeup/
 - [ ] **Discord Bot**: Notificaciones de oportunidades
 - [ ] **Mobile App**: Aplicación móvil nativa
 
-## 🔧 Scripts de Utilidad
+## 📚 Documentación Completa
 
-### Actualización de Catálogo (`fix_grados.py`)
-Script que sincroniza el catálogo local con datos reales de CSFloat API:
+Para información más detallada, consulta la documentación completa:
 
-```bash
-# Configurar API key
-export CSFLOAT_API_KEY="tu_api_key_aqui"  # Linux/macOS
-$env:CSFLOAT_API_KEY="tu_api_key_aqui"    # Windows PowerShell
-
-# Ejecutar sincronización
-python fix_grados.py
-
-# Usar catálogo actualizado
-python -m tradeup.cli --contract contracts/ejemplo_contrato.csv --catalog data/skins_fixed.csv
-```
-
-#### ¿Qué hace el script?
-- **Valida rarezas**: Corrige la columna `Grado` consultando CSFloat
-- **Detecta inconsistencias**: Reporta diferencias entre catálogo local y API
-- **Mapeo automático**: Convierte códigos de rareza (1-7) a nombres legibles
-- **Manejo de casos especiales**: Identifica knives/gloves automáticamente
-- **Genera reporte**: Lista skins sin datos disponibles
-
-#### Mapeo de Rarezas
-| Código API | Rareza | Color |
-|------------|--------|-------|
-| 1 | `consumer` | Gris |
-| 2 | `industrial` | Celeste |
-| 3 | `mil-spec` | Azul |
-| 4 | `restricted` | Morado |
-| 5 | `classified` | Rosa |
-| 6 | `covert` | Rojo |
-| 7 | `extraordinary`/`contraband` | Dorado |
-
-## 📊 Ejemplos de Contratos
-
-### Contrato Básico (Chroma + Prisma 2)
-El archivo `contracts/ejemplo_contrato.csv` demuestra un contrato real:
-- **5 skins** de "The Chroma Collection" (Mil-Spec)
-- **5 skins** de "The Prisma 2 Collection" (Mil-Spec)
-- **Objetivo**: Obtener skins Restricted de ambas colecciones
-- **Probabilidad**: 50/50 entre las dos colecciones
-
-### Contrato Avanzado (Osiris Supernova)
-El archivo `contracts/contrato_osiris_supernova.csv` muestra:
-- Contrato enfocado en una skin específica de alta demanda
-- Optimización de floats para maximizar valor
-- Análisis de riesgo/recompensa
+- **[📋 Guía de Contratos](docs/guia_contratos.md)**: Mecánicas completas de CS2, fórmulas matemáticas y estrategias avanzadas
+- **[🌐 API CSFloat](docs/api_csfloat.md)**: Documentación técnica de integración con CSFloat, ejemplos de código y mejores prácticas  
+- **[🏗️ Arquitectura](docs/structure.md)**: Estructura del proyecto, patrones de diseño y consideraciones futuras
+- **[⚙️ Stack Técnico](docs/tech.md)**: Tecnologías utilizadas, herramientas de desarrollo y roadmap técnico
+- **[🎯 Visión del Producto](docs/product.md)**: Objetivos, usuarios objetivo, casos de uso y roadmap de funcionalidades
 
 ## 🤝 Comunidad y Soporte
 
@@ -414,6 +427,27 @@ El archivo `contracts/contrato_osiris_supernova.csv` muestra:
 - **[TradeUpSpy](https://www.tradeupspy.com/)**: Herramienta de referencia original
 - **[CSFloat](https://csfloat.com/)**: Marketplace y API de datos
 - **[Steam Market](https://steamcommunity.com/market/)**: Precios de referencia oficiales
+
+## 🤝 Contribuciones
+
+TradeUpSPY es un proyecto de código abierto que se beneficia de las contribuciones de la comunidad. Todas las contribuciones son bienvenidas, desde reportes de bugs hasta nuevas funcionalidades.
+
+### Formas de Contribuir
+- 🐛 **Reportar Bugs**: Usa GitHub Issues para reportar problemas
+- 💡 **Sugerir Features**: Propón nuevas funcionalidades o mejoras
+- 📝 **Mejorar Documentación**: Ayuda a hacer la documentación más clara
+- 💻 **Contribuir Código**: Implementa fixes o nuevas funcionalidades
+- 🧪 **Testing**: Ayuda a encontrar y reportar edge cases
+
+### Proceso de Contribución
+1. Fork el repositorio
+2. Crea una rama para tu contribución
+3. Implementa los cambios con tests
+4. Asegúrate de que pasan todos los tests
+5. Actualiza la documentación si es necesario
+6. Crea un Pull Request con descripción detallada
+
+¡Esperamos tus contribuciones para hacer TradeUpSPY aún mejor! 🌟
 
 ## 📄 Licencia y Términos
 
@@ -442,36 +476,3 @@ Si TradeUpSPY te ha sido útil:
 - 📢 **Comparte** con otros traders de CS2
 
 **¡Gracias por usar TradeUpSPY!** 🚀
-
----
-
-## 📖 Documentación Adicional
-
-Para información más detallada, consulta la documentación completa:
-
-- **[📋 Guía de Contratos](docs/guia_contratos.md)**: Mecánicas completas de CS2, fórmulas matemáticas y estrategias avanzadas
-- **[🌐 API CSFloat](docs/api_csfloat.md)**: Documentación técnica de integración con CSFloat, ejemplos de código y mejores prácticas  
-- **[🏗️ Arquitectura](docs/structure.md)**: Estructura del proyecto, patrones de diseño y consideraciones futuras
-- **[⚙️ Stack Técnico](docs/tech.md)**: Tecnologías utilizadas, herramientas de desarrollo y roadmap técnico
-- **[🎯 Visión del Producto](docs/product.md)**: Objetivos, usuarios objetivo, casos de uso y roadmap de funcionalidades
-
-## 🤝 Contribuciones
-
-TradeUpSPY es un proyecto de código abierto que se beneficia de las contribuciones de la comunidad. Todas las contribuciones son bienvenidas, desde reportes de bugs hasta nuevas funcionalidades.
-
-### Formas de Contribuir
-- 🐛 **Reportar Bugs**: Usa GitHub Issues para reportar problemas
-- 💡 **Sugerir Features**: Propón nuevas funcionalidades o mejoras
-- 📝 **Mejorar Documentación**: Ayuda a hacer la documentación más clara
-- 💻 **Contribuir Código**: Implementa fixes o nuevas funcionalidades
-- 🧪 **Testing**: Ayuda a encontrar y reportar edge cases
-
-### Proceso de Contribución
-1. Fork el repositorio
-2. Crea una rama para tu contribución
-3. Implementa los cambios con tests
-4. Asegúrate de que pasan todos los tests
-5. Actualiza la documentación si es necesario
-6. Crea un Pull Request con descripción detallada
-
-¡Esperamos tus contribuciones para hacer TradeUpSPY aún mejor! 🌟

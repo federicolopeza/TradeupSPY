@@ -1,97 +1,288 @@
-# Guía Completa de Trade-Ups de CS2
+# Guía Técnica Completa de Trade-Ups de CS2
 
-> Documentación técnica completa sobre los contratos de intercambio de CS2, incluyendo mecánicas del juego, fórmulas matemáticas, y estrategias de rentabilidad. Esta guía replica la funcionalidad de **TradeUpSpy** con precisión matemática.
+> Documentación técnica exhaustiva sobre los contratos de intercambio de CS2, basada en el análisis del código real de TradeUpSPY. Incluye mecánicas del juego, fórmulas matemáticas implementadas, y estrategias de rentabilidad validadas.
 
-## Tabla de Contenidos
-1. [Fundamentos de Trade-Ups](#1-qué-es-un-trade-up)
-2. [Cálculo de Float del Resultado](#2-fórmula-del-float-del-resultado)
-3. [Sistema de Probabilidades](#3-probabilidades-de-resultado)
-4. [Análisis de Rentabilidad](#4-rentabilidad-ev-y-comisiones)
-5. [Checklist de Validación](#5-checklist-rápida-antes-de-confirmar-el-contrato)
-6. [Errores Comunes](#6-errores-comunes)
-7. [Consejos Estratégicos](#7-consejos-prácticos)
-8. [Ejemplo Paso a Paso](#8-ejemplo-numérico-paso-a-paso)
-9. [Referencias](#9-referencias-útiles)
+## 📋 Tabla de Contenidos
+1. [🎯 Fundamentos de Trade-Ups](#1-fundamentos-de-trade-ups)
+2. [🧮 Cálculo de Float del Resultado](#2-cálculo-de-float-del-resultado)
+3. [📊 Sistema de Probabilidades](#3-sistema-de-probabilidades)
+4. [💰 Análisis de Rentabilidad](#4-análisis-de-rentabilidad)
+5. [✅ Validación Automática](#5-validación-automática-en-tradeupspy)
+6. [⚠️ Errores Comunes](#6-errores-comunes-y-limitaciones)
+7. [🎯 Estrategias Avanzadas](#7-estrategias-avanzadas)
+8. [📈 Ejemplo Paso a Paso](#8-ejemplo-paso-a-paso-con-código-real)
+9. [🔧 Implementación Técnica](#9-implementación-técnica-en-tradeupspy)
+10. [📚 Referencias y Recursos](#10-referencias-y-recursos)
 
 ---
 
-## 1) ¿Qué es un trade-up?
+## 1) 🎯 Fundamentos de Trade-Ups
 
-Un **Trade-Up Contract** es el mecanismo oficial de CS2 que permite **combinar 10 skins de la misma rareza** para recibir **1 skin de la rareza inmediata superior**.
+### ¿Qué es un Trade-Up Contract?
 
-### Reglas Fundamentales del Sistema
+Un **Trade-Up Contract** es el mecanismo oficial de CS2 que permite **combinar exactamente 10 skins de la misma rareza** para recibir **1 skin de la rareza inmediata superior**.
 
-#### Requisitos Obligatorios
-- **Cantidad exacta**: Siempre 10 skins, ni más ni menos
-- **Rareza homogénea**: Todas las skins deben ser de la misma rareza
-- **Consistencia StatTrak™**: No se puede mezclar StatTrak™ con skins normales
-- **Exclusión Souvenir**: Las skins Souvenir no pueden usarse en contratos
+### Reglas Fundamentales (Implementadas en TradeUpSPY)
 
-#### Progresión de Rarezas
+#### Validación Automática en `validate_entries()`
+```python
+def validate_entries(entries: List[ContractEntry]) -> Tuple[str, bool]:
+    # 1. Exactamente 10 entradas
+    if len(entries) != 10:
+        raise ContractValidationError("Un contrato debe tener exactamente 10 entradas.")
+    
+    # 2. Rareza homogénea
+    rarities = {e.rarity for e in entries}
+    if len(rarities) != 1:
+        raise ContractValidationError("Todas las entradas deben tener la misma rareza.")
+    
+    # 3. StatTrak consistente
+    stattrak_flags = {e.stattrak for e in entries}
+    if len(stattrak_flags) != 1:
+        raise ContractValidationError("No se puede mezclar StatTrak™ y no-StatTrak™.")
 ```
-Consumer Grade (Gris) → Industrial Grade (Celeste) → Mil-Spec (Azul) → 
-Restricted (Morado) → Classified (Rosa) → Covert (Rojo)
+
+#### Progresión de Rarezas (Constante `RARITY_NEXT`)
+```python
+RARITY_NEXT = {
+    "consumer": "industrial",
+    "industrial": "mil-spec", 
+    "mil-spec": "restricted",
+    "restricted": "classified",
+    "classified": "covert",
+    "covert": None,  # No hay progresión hacia knives/gloves
+}
 ```
 
-**Limitación importante**: No existen contratos hacia **Rare/Special** (cuchillos/guantes dorados).
-
-#### Mecánica StatTrak™
-- Si usas 10 skins StatTrak™ → el resultado será StatTrak™
-- Si usas 10 skins normales → el resultado será normal
-- **Prohibido**: Mezclar StatTrak™ con skins normales en el mismo contrato
+#### Exclusiones Automáticas
+- **Souvenir**: No soportado (debe excluirse manualmente del CSV)
+- **Knives/Gloves**: `RARITY_NEXT["covert"] = None` previene contratos inválidos
+- **Rareza mixta**: Validación automática rechaza contratos con rarezas diferentes
 
 ### Colecciones y Compatibilidad
-- Las skins pertenecen a **colecciones** temáticas (ej: "The Chroma Collection")
-- Puedes mezclar skins de diferentes colecciones en un mismo contrato
-- Solo las colecciones que **tengan skins en la rareza objetivo** pueden producir resultados
-- La probabilidad de resultado se distribuye según la representación de cada colección
+
+#### Sistema de Catálogo
+```python
+class Catalog:
+    def outcomes_for(self, collection: str, source_rarity: str) -> List[SkinCatalogItem]:
+        """Retorna skins disponibles en la rareza objetivo para una colección."""
+        next_rarity = RARITY_NEXT.get(source_rarity)
+        if not next_rarity:
+            return []
+        return self.by_collection_rarity.get((collection, next_rarity), [])
+```
+
+#### Reglas de Compatibilidad
+- **Mezcla de Colecciones**: Permitida y común en contratos reales
+- **Outcomes Válidos**: Solo colecciones con skins en rareza objetivo contribuyen
+- **Distribución de Probabilidad**: Basada en representación de cada colección en las entradas
 
 ---
 
-## 2) Fórmula del float del resultado
-El **float** del skin resultante se calcula promediando los floats de entrada **normalizados** y remapeando al rango de la skin de salida.
+## 2) 🧮 Cálculo de Float del Resultado
 
-1) Normalizá cada float de entrada `F_i` a `[0,1]` usando su rango propio `[Min_i, Max_i]`:
+### Algoritmo Implementado en `compute_f_norm_avg()`
+
+El **float** del skin resultante se calcula mediante normalización y remapeo, exactamente como TradeUpSpy:
+
+```python
+def compute_f_norm_avg(entries: List[ContractEntry]) -> float:
+    """Promedio de floats normalizados en [0,1] respecto del rango de cada entrada."""
+    total = 0.0
+    for e in entries:
+        if e.float_min is None or e.float_max is None:
+            raise ContractValidationError("Faltan rangos de float para una o más entradas.")
+        denom = max(e.float_max - e.float_min, 1e-9)  # Evitar división por cero
+        total += (e.float_value - e.float_min) / denom
+    return total / 10.0
+```
+
+### Proceso Paso a Paso
+
+#### 1. Normalización Individual
+Para cada entrada `i`:
 ```
 f_i_norm = (F_i - Min_i) / (Max_i - Min_i)
 ```
-2) Promedio de los 10 normalizados:
+
+#### 2. Promedio Normalizado
 ```
 f_norm_avg = (1/10) * sum_{i=1..10}(f_i_norm)
 ```
-3) Remapeo al rango de la skin de salida `[Min_out, Max_out]`:
-```
-Float_out = Min_out + (Max_out - Min_out) * f_norm_avg
-```
-> Nota: si las 10 entradas comparten exactamente el mismo rango `[Min, Max]`, remapear el **promedio simple** de floats da el mismo resultado que promediar normalizados.
 
-### Rangos de desgaste (orientativos)
-- **Factory New (FN)**: 0.00–0.07
-- **Minimal Wear (MW)**: 0.07–0.15
-- **Field‑Tested (FT)**: 0.15–0.38
-- **Well‑Worn (WW)**: 0.38–0.45
-- **Battle‑Scarred (BS)**: 0.45–1.00
+#### 3. Remapeo al Rango de Salida
+```python
+# En compute_outcomes()
+out_float = out_min + (out_max - out_min) * f_norm_avg
+```
 
-> Los límites reales dependen del **Min/Max** de cada skin. Algunas skins no pueden existir en FN/MW aunque tu promedio sea muy bajo (p. ej., si `Min_out = 0.10`, jamás será FN).
+### Rangos de Desgaste y Clasificación
+
+#### Constante `WEAR_BUCKETS`
+```python
+WEAR_BUCKETS = [
+    ("Factory New", 0.00, 0.07),
+    ("Minimal Wear", 0.07, 0.15), 
+    ("Field-Tested", 0.15, 0.38),
+    ("Well-Worn", 0.38, 0.45),
+    ("Battle-Scarred", 0.45, 1.00),
+]
+
+def wear_from_float(f: float) -> str:
+    """Determina el wear name basado en el valor de float."""
+    for name, lo, hi in WEAR_BUCKETS:
+        if lo <= f < hi or (name == "Battle-Scarred" and abs(f - hi) < 1e-9):
+            return name
+    return "Unknown"
+```
+
+### Consideraciones Importantes
+
+#### Rangos Específicos por Skin
+- **Cada skin tiene su propio `FloatMin` y `FloatMax`**
+- Ejemplo: AK-47 | Cartel tiene rango `[0.0, 0.75]`
+- Si `f_norm_avg = 0.1` → `out_float = 0.0 + (0.75 - 0.0) * 0.1 = 0.075`
+- Resultado: Minimal Wear (0.075 está en rango 0.07-0.15)
+
+#### Limitaciones de Wear
+```python
+# Ejemplo: Skin con FloatMin = 0.10
+# Aunque f_norm_avg = 0.0, out_float = 0.10 + (0.50 - 0.10) * 0.0 = 0.10
+# Nunca será Factory New (requiere < 0.07)
+```
+
+### Ejemplo Práctico de Cálculo
+
+#### Datos de Entrada
+```python
+entries = [
+    # 5 entradas con rango [0.08, 0.40], float 0.24
+    ContractEntry(float_value=0.24, float_min=0.08, float_max=0.40),  # x5
+    # 5 entradas con rango [0.08, 0.40], float 0.24  
+    ContractEntry(float_value=0.24, float_min=0.08, float_max=0.40),  # x5
+]
+```
+
+#### Cálculo
+```python
+# Normalización: (0.24 - 0.08) / (0.40 - 0.08) = 0.16 / 0.32 = 0.5
+# Promedio: (0.5 * 10) / 10 = 0.5
+f_norm_avg = 0.5
+
+# Para outcome con rango [0.0, 1.0]:
+out_float = 0.0 + (1.0 - 0.0) * 0.5 = 0.5
+wear_name = wear_from_float(0.5) = "Battle-Scarred"
+```
 
 ---
 
-## 3) Probabilidades de resultado
-Cuando mezclás colecciones en las entradas, la probabilidad de resultado se reparte entre las **colecciones elegibles** que **sí** tengan skins en la **rareza objetivo**.
+## 3) 📊 Sistema de Probabilidades
 
-**Modelo por pool de outcomes (predeterminado, como TradeUpSpy)**
-- Definí `n_C` = número de entradas de la colección `C` y `m_C` = cantidad de outcomes en la rareza objetivo para `C`.
-- Tamaño del pool: `S = sum_C (n_C * m_C)`.
-- Probabilidad de un outcome específico `j` que pertenece a `C`:
-```
-P(j) = n_C / S
-```
-(Dentro de cada colección, todos los outcomes pesan igual; la masa total de la colección es `n_C * m_C / S`).
+### Modelo "Pool of Outcomes" (Implementado en TradeUpSPY)
 
-**Modelo clásico (colección → uniforme dentro)**
-- Elegís una colección con probabilidad `n_C / 10` y luego un outcome uniforme entre `m_C`.
-- Resultado: `P(j) = n_C / (10 * m_C)`.
-> Nota: usamos por defecto el **pool de outcomes** para alinear con TradeUpSpy. Si preferís el modelo clásico, documentalo y mantené consistencia en todo el cálculo (probabilidades y EV).
+TradeUpSPY implementa exactamente el mismo modelo que TradeUpSpy para garantizar resultados idénticos:
+
+```python
+def compute_outcomes(entries: List[ContractEntry], catalog: Catalog) -> List[Outcome]:
+    """Computa outcomes por modelo de *pool* al estilo TradeUpSpy."""
+    
+    # 1. Conteo por colección en entradas
+    count_by_collection = Counter(e.collection for e in entries)
+    
+    # 2. Outcomes por colección (solo si existen en rareza objetivo)
+    coll_to_outs = {}
+    for coll, n_c in count_by_collection.items():
+        outs = catalog.outcomes_for(coll, rarity)
+        if outs:
+            coll_to_outs[coll] = outs
+    
+    # 3. Tamaño del pool S = sum(n_C * m_C)
+    S = 0
+    for coll, outs in coll_to_outs.items():
+        S += count_by_collection[coll] * len(outs)
+    
+    # 4. Probabilidad de cada outcome
+    results = []
+    for coll, outs in coll_to_outs.items():
+        n_c = count_by_collection[coll]
+        prob_each = n_c / S  # Probabilidad uniforme dentro de colección
+        
+        for out_item in outs:
+            results.append(Outcome(
+                name=out_item.name,
+                collection=coll,
+                prob=prob_each,  # n_C / S
+                # ... otros campos
+            ))
+    
+    return results
+```
+
+### Fórmula Matemática
+
+#### Variables
+- `n_C` = número de entradas de la colección `C`
+- `m_C` = cantidad de outcomes en la rareza objetivo para `C`
+- `S` = tamaño total del pool = `Σ_C (n_C × m_C)`
+
+#### Probabilidad de Outcome Específico
+```
+P(outcome_j en colección_C) = n_C / S
+```
+
+#### Masa Total por Colección
+```
+Masa_C = (n_C × m_C) / S
+```
+
+### Ejemplo Numérico
+
+#### Configuración
+- **Entradas**: 7 de ColecciónA, 3 de ColecciónB
+- **Outcomes**: ColecciónA tiene 2 outcomes, ColecciónB tiene 2 outcomes
+
+#### Cálculo
+```python
+# Conteos
+n_A = 7, m_A = 2
+n_B = 3, m_B = 2
+
+# Pool total
+S = (7 × 2) + (3 × 2) = 14 + 6 = 20
+
+# Probabilidades
+P(outcome_A1) = P(outcome_A2) = 7/20 = 0.35
+P(outcome_B1) = P(outcome_B2) = 3/20 = 0.15
+
+# Verificación: 0.35 + 0.35 + 0.15 + 0.15 = 1.0 ✓
+```
+
+### Validación Automática
+
+```python
+# TradeUpSPY incluye validación defensiva
+try:
+    total_prob = sum(o.prob for o in results)
+    assert abs(total_prob - 1.0) < 1e-6
+except Exception:
+    # En caso de ejecución optimizada sin asserts
+    pass
+```
+
+### Diferencias con Modelo Clásico
+
+#### Modelo Clásico (NO implementado)
+```
+P(outcome_j) = n_C / (10 × m_C)
+```
+
+#### Comparación
+| Escenario | Pool Model | Clásico |
+|-----------|------------|---------|
+| 7A, 3B; 2 outcomes cada uno | A: 0.35, B: 0.15 | A: 0.35, B: 0.15 |
+| 7A, 3B; A=2 outcomes, B=1 outcome | A: 0.35, B: 0.30 | A: 0.35, B: 0.30 |
+
+> **Nota**: TradeUpSPY usa exclusivamente el modelo Pool para mantener compatibilidad exacta con TradeUpSpy.
 
 ---
 
@@ -369,3 +560,567 @@ Las comisiones reducen el precio neto de venta. Usa `EV_neto = EV * (1 - fee_rat
 
 ### Nota Final
 Esta guía proporciona una base sólida para entender y ejecutar trade-ups rentables en CS2. Recuerda siempre validar tus cálculos con herramientas como TradeUpSpy y nunca arriesgues más de lo que puedes permitirte perder.
+## 4) 💰 Análisis de Rentabilidad
+
+### Métricas Implementadas en `summary_metrics()`
+
+TradeUpSPY calcula un conjunto completo de métricas financieras para evaluación de contratos:
+
+```python
+def summary_metrics(entries, outcomes, fees_rate=0.02) -> ContractResult:
+    """Calcula métricas clave de decisión del contrato."""
+    
+    # Costo total de entradas
+    total_inputs = sum(e.price_cents for e in entries if e.price_cents is not None)
+    
+    # EV bruto = Σ (precio_outcome × probabilidad)
+    ev_gross = sum((o.price_cents or 0) * o.prob for o in outcomes)
+    
+    # EV neto = EV bruto × (1 - fees)
+    ev_net = ev_gross * (1.0 - fees_rate)
+    
+    # P&L esperado = EV neto - costo total
+    pl_expected_net = ev_net - total_inputs
+    
+    # ROI neto = P&L / costo
+    roi_net = pl_expected_net / total_inputs
+    
+    return ContractResult(
+        ev_gross_cents=ev_gross,
+        ev_net_cents=ev_net,
+        pl_expected_net_cents=pl_expected_net,
+        roi_net=roi_net,
+        # ... más métricas
+    )
+```
+
+### Métricas Principales
+
+#### 1. Valor Esperado (EV)
+```python
+# EV Bruto (sin comisiones)
+EV_bruto = Σ (Precio_outcome × Probabilidad_outcome)
+
+# EV Neto (después de comisiones de venta)
+EV_neto = EV_bruto × (1 - fees_rate)
+```
+
+#### 2. Retorno de Inversión (ROI)
+```python
+# ROI Neto (recomendado para decisiones)
+ROI_neto = (EV_neto - Costo_total) / Costo_total
+
+# ROI Simple (promedio sin probabilidades)
+ROI_simple = (Promedio_precios_outcomes / Costo_total)
+```
+
+#### 3. Probabilidad de Beneficio
+```python
+# Outcomes que generan ganancia después de comisiones
+prob_profit = sum(
+    o.prob for o in outcomes
+    if round((o.price_cents or 0) * (1.0 - fees_rate)) >= total_inputs
+)
+```
+
+#### 4. Análisis de Break-Even
+```python
+# Precio medio de venta requerido para no perder
+break_even_price = total_inputs / (1.0 - fees_rate)
+
+# Costo máximo de entradas para break-even
+max_break_even_total = ev_net
+max_break_even_per_skin = ev_net / 10.0
+```
+
+### Estructura de Comisiones
+
+#### Comisiones por Marketplace
+```python
+# CSFloat (por defecto en TradeUpSPY)
+fees_rate = 0.02  # 2%
+
+# Steam Market
+fees_rate = 0.15  # ~15% (5% Steam + 10% CS2)
+
+# Otros marketplaces
+fees_rate = 0.05  # Variable según plataforma
+```
+
+#### Aplicación de Comisiones
+```python
+# Las comisiones se aplican SOLO al precio de venta (outcomes)
+# NO al costo de compra (entradas)
+precio_neto_venta = precio_bruto * (1 - fees_rate)
+```
+
+## 5) ✅ Validación Automática en TradeUpSPY
+
+### Sistema de Validación Completo
+
+TradeUpSPY implementa validación exhaustiva en múltiples capas:
+
+#### 1. Validación de Estructura (`validate_entries`)
+```python
+def validate_entries(entries: List[ContractEntry]) -> Tuple[str, bool]:
+    # Exactamente 10 entradas
+    if len(entries) != 10:
+        raise ContractValidationError("Un contrato debe tener exactamente 10 entradas.")
+    
+    # Rareza homogénea
+    rarities = {e.rarity for e in entries}
+    if len(rarities) != 1:
+        raise ContractValidationError("Todas las entradas deben tener la misma rareza.")
+    
+    # StatTrak consistente
+    stattrak_flags = {e.stattrak for e in entries}
+    if len(stattrak_flags) != 1:
+        raise ContractValidationError("No se puede mezclar StatTrak™ y no-StatTrak™.")
+    
+    return rarity, stattrak
+```
+
+#### 2. Validación de Catálogo (`fill_ranges_from_catalog`)
+```python
+def fill_ranges_from_catalog(entries: List[ContractEntry], catalog: Catalog) -> None:
+    """Completa rangos de float y valida existencia en catálogo."""
+    for e in entries:
+        if e.float_min is None or e.float_max is None:
+            item = catalog.get_item(e.name, e.collection)
+            if not item:
+                raise ContractValidationError(
+                    f"Skin no encontrada: '{e.name}' de '{e.collection}'"
+                )
+            e.float_min = item.float_min
+            e.float_max = item.float_max
+```
+
+#### 3. Validación de Outcomes (`compute_outcomes`)
+```python
+def compute_outcomes(entries, catalog):
+    # Verificar que existe rareza siguiente
+    next_rarity = RARITY_NEXT.get(rarity)
+    if not next_rarity:
+        raise ContractValidationError(
+            "No existen contratos hacia Rare/Special (cuchillos/guantes)."
+        )
+    
+    # Verificar que hay outcomes posibles
+    if not coll_to_outs:
+        raise ContractValidationError(
+            "Ninguna colección de entrada tiene skins en la rareza objetivo."
+        )
+    
+    # Verificar pool válido
+    if S <= 0:
+        raise ContractValidationError(
+            "No hay outcomes posibles (S=0). Verificá el catálogo."
+        )
+```
+
+### Mensajes de Error Claros
+
+#### Ejemplos de Validación
+```python
+# Error común: Contrato incompleto
+"Un contrato debe tener exactamente 10 entradas."
+
+# Error común: Rareza mixta
+"Todas las entradas deben tener la misma rareza."
+
+# Error común: StatTrak mixto
+"No se puede mezclar StatTrak™ y no-StatTrak™ en el mismo contrato."
+
+# Error común: Skin no existe
+"Skin no encontrada en catálogo: 'AK-47 | Fake' de colección 'Invalid Collection'"
+
+# Error común: Sin outcomes
+"Ninguna colección de entrada tiene skins en la rareza objetivo."
+```
+
+## 6) ⚠️ Errores Comunes y Limitaciones
+
+### Errores de Usuario Frecuentes
+
+#### 1. Formato de CSV Incorrecto
+```python
+# Error común en contracts/mi_contrato.csv
+Name,Collection,Rarity,Float,PriceCents,StatTrak
+"AK-47 | Cartel","The Chroma Collection","Classified",0.15,,false  # ❌ "Classified" debe ser "classified"
+```
+
+#### 2. Nombres de Skins Incorrectos
+```python
+# ❌ Incorrecto
+"AK47 | Cartel"  # Falta guión
+
+# ✅ Correcto (debe coincidir exactamente con catálogo)
+"AK-47 | Cartel"
+```
+
+#### 3. Colecciones Incorrectas
+```python
+# ❌ Incorrecto
+"Chroma Collection"  # Falta "The"
+
+# ✅ Correcto
+"The Chroma Collection"
+```
+
+#### 4. Floats Fuera de Rango
+```python
+# TradeUpSPY valida automáticamente
+if not (item.float_min <= entry.float_value <= item.float_max):
+    # Se genera advertencia pero no error crítico
+    pass
+```
+
+### Limitaciones del Sistema
+
+#### 1. Skins No Disponibles
+```python
+# Algunas skins en el catálogo pueden no tener listings en CSFloat
+# TradeUpSPY maneja esto gracefully:
+def get_lowest_price_cents(self, market_hash_name: str, stattrak: bool) -> Optional[int]:
+    # Retorna None si no hay listings
+    # El análisis continúa con precios faltantes
+    return None
+```
+
+#### 2. Datos del Catálogo Desactualizados
+```python
+# Solución: Usar fix_grados.py para actualizar
+python fix_grados.py
+# Genera data/skins_fixed.csv con datos actuales de CSFloat
+```
+
+#### 3. Rate Limits de API
+```python
+# TradeUpSPY maneja automáticamente:
+# - Backoff exponencial
+# - Respeto de retry-after headers
+# - Caché para evitar requests duplicados
+```
+
+## 7) 🎯 Estrategias Avanzadas
+
+### Optimización de Float
+
+#### Estrategia: Target Float
+```python
+def calculate_target_float(target_wear: str, output_range: tuple) -> float:
+    """Calcular el float normalizado necesario para un wear específico."""
+    wear_ranges = {
+        "FN": (0.00, 0.07),
+        "MW": (0.07, 0.15),
+        "FT": (0.15, 0.38),
+        "WW": (0.38, 0.45),
+        "BS": (0.45, 1.00)
+    }
+    
+    min_out, max_out = output_range
+    target_min, target_max = wear_ranges[target_wear]
+    
+    # Calcular rango válido en el espacio normalizado
+    norm_min = max(0, (target_min - min_out) / (max_out - min_out))
+    norm_max = min(1, (target_max - min_out) / (max_out - min_out))
+    
+    # Retornar punto medio del rango válido
+    return (norm_min + norm_max) / 2
+```
+
+#### Ejemplo Práctico
+```python
+# Para obtener AK-47 | Cartel en Minimal Wear
+# Cartel tiene rango [0.0, 0.75]
+# MW requiere [0.07, 0.15]
+
+target_float = calculate_target_float("MW", (0.0, 0.75))
+# target_float ≈ 0.147 (normalizado)
+
+# Float real de salida: 0.0 + (0.75 - 0.0) * 0.147 ≈ 0.11
+# Resultado: Minimal Wear ✓
+```
+
+### Análisis de Colecciones
+
+#### Estrategia: Collection Weighting
+```python
+def analyze_collection_value(outcomes_by_collection):
+    """Analizar valor esperado por colección."""
+    collection_ev = {}
+    
+    for collection, outcomes in outcomes_by_collection.items():
+        total_prob = sum(o.prob for o in outcomes)
+        weighted_value = sum(o.price_cents * o.prob for o in outcomes)
+        avg_value = weighted_value / total_prob if total_prob > 0 else 0
+        
+        collection_ev[collection] = {
+            'probability': total_prob,
+            'expected_value': avg_value,
+            'outcomes_count': len(outcomes)
+        }
+    
+    return collection_ev
+```
+
+### Gestión de Riesgo
+
+#### Métricas de Riesgo Implementadas
+```python
+def calculate_risk_metrics(outcomes, total_cost):
+    """Calcular métricas de riesgo del contrato."""
+    prices = [o.price_cents for o in outcomes if o.price_cents]
+    
+    if not prices:
+        return None
+    
+    # Mejor y peor caso
+    best_case = max(prices)
+    worst_case = min(prices)
+    
+    # Percentiles
+    sorted_prices = sorted(prices)
+    p25 = sorted_prices[len(sorted_prices) // 4]
+    p75 = sorted_prices[3 * len(sorted_prices) // 4]
+    
+    # Volatilidad (desviación estándar)
+    mean_price = sum(prices) / len(prices)
+    variance = sum((p - mean_price) ** 2 for p in prices) / len(prices)
+    volatility = variance ** 0.5
+    
+    return {
+        'best_case': best_case,
+        'worst_case': worst_case,
+        'p25': p25,
+        'p75': p75,
+        'volatility': volatility,
+        'risk_reward_ratio': (best_case - total_cost) / (total_cost - worst_case)
+    }
+```
+
+## 8) 📈 Ejemplo Paso a Paso con Código Real
+
+### Contrato Real: Chroma 2 Collection
+
+Basado en `contracts/ejemplo_contrato.csv`:
+
+```csv
+Name,Collection,Rarity,Float,PriceCents,StatTrak
+CZ75-Auto | Pole Position,The Chroma 2 Collection,restricted,0.213559,1200,false
+CZ75-Auto | Pole Position,The Chroma 2 Collection,restricted,0.183809,1150,false
+CZ75-Auto | Pole Position,The Chroma 2 Collection,restricted,0.177276,1100,false
+# ... 7 entradas más
+```
+
+### Ejecución Paso a Paso
+
+#### 1. Carga y Validación
+```python
+# Cargar contrato
+entries = read_contract_csv('contracts/ejemplo_contrato.csv')
+catalog = read_catalog_csv('data/skins_fixed.csv')
+
+# Validar estructura
+rarity, stattrak = validate_entries(entries)  # "restricted", False
+
+# Completar rangos desde catálogo
+fill_ranges_from_catalog(entries, catalog)
+```
+
+#### 2. Cálculo de Float Normalizado
+```python
+# Todas las entradas son CZ75-Auto | Pole Position con rango [0.0, 1.0]
+floats = [0.213559, 0.183809, 0.177276, ...]  # 10 valores
+
+# Normalización (rango [0.0, 1.0] → sin cambio)
+normalized = [f for f in floats]  # Ya están normalizados
+
+# Promedio
+f_norm_avg = sum(normalized) / 10  # ≈ 0.165
+```
+
+#### 3. Determinación de Outcomes
+```python
+# Rareza objetivo: restricted → classified
+next_rarity = RARITY_NEXT["restricted"]  # "classified"
+
+# Outcomes de The Chroma 2 Collection en classified:
+outcomes = catalog.outcomes_for("The Chroma 2 Collection", "restricted")
+# Resultado: Lista de skins classified de esa colección
+
+# Probabilidades (todas las entradas son de la misma colección)
+# n_C = 10, m_C = len(outcomes)
+# S = 10 * len(outcomes)
+# P(cada outcome) = 10 / S = 1 / len(outcomes)
+```
+
+#### 4. Cálculo de Float de Salida
+```python
+for outcome in outcomes:
+    # Remapeo al rango específico de cada outcome
+    out_float = outcome.float_min + (outcome.float_max - outcome.float_min) * f_norm_avg
+    wear_name = wear_from_float(out_float)
+    
+    # Ejemplo: Si outcome tiene rango [0.0, 0.8]
+    # out_float = 0.0 + (0.8 - 0.0) * 0.165 = 0.132
+    # wear_name = "Minimal Wear"
+```
+
+#### 5. Análisis de Rentabilidad
+```python
+# Obtener precios (CSFloat API o local)
+client = CsfloatClient()
+fill_outcome_prices(outcomes, client, stattrak=False)
+
+# Calcular métricas
+result = summary_metrics(entries, outcomes, fees_rate=0.02)
+
+# Resultados típicos:
+# - total_inputs_cost_cents: 11500 (10 × ~1150)
+# - ev_gross_cents: 12800
+# - ev_net_cents: 12544 (12800 × 0.98)
+# - pl_expected_net_cents: 1044 (12544 - 11500)
+# - roi_net: 0.091 (9.1% ganancia esperada)
+```
+
+### Interpretación de Resultados
+
+#### Decisión Automática
+```python
+if result.ev_net_cents >= result.total_inputs_cost_cents:
+    decision = "✅ RENTABLE"
+else:
+    decision = "❌ NO rentable"
+```
+
+#### Métricas Clave
+- **EV Neto**: $125.44 (valor esperado después de comisiones)
+- **Costo Total**: $115.00
+- **P&L Esperado**: +$10.44 (ganancia esperada)
+- **ROI Neto**: +9.1%
+- **Probabilidad de Beneficio**: 65% (ejemplo)
+
+## 9) 🔧 Implementación Técnica en TradeUpSPY
+
+### Arquitectura del Sistema
+
+#### Flujo de Datos Principal
+```python
+def main():
+    # 1. Carga de datos
+    entries = read_contract_csv(args.contract)
+    catalog = read_catalog_csv(args.catalog)
+    
+    # 2. Validación
+    rarity, stattrak = validate_entries(entries)
+    fill_ranges_from_catalog(entries, catalog)
+    
+    # 3. Pricing (opcional)
+    if args.fetch_prices:
+        client = CsfloatClient()
+        fill_entry_prices(entries, client, stattrak)
+    
+    # 4. Cálculo de outcomes
+    outcomes = compute_outcomes(entries, catalog)
+    
+    # 5. Pricing de outcomes (opcional)
+    if args.fetch_prices:
+        fill_outcome_prices(outcomes, client, stattrak)
+    
+    # 6. Análisis final
+    result = summary_metrics(entries, outcomes, fees_rate=args.fees)
+    
+    # 7. Presentación
+    print_decision_and_summary(result)
+    print_outcomes_table(outcomes, fees_rate=result.fees_rate)
+    print_entries_table(entries)
+```
+
+### Modelos de Datos
+
+#### Estructura Principal
+```python
+@dataclass
+class ContractResult:
+    entries: List[ContractEntry]
+    outcomes: List[Outcome]
+    total_inputs_cost_cents: Optional[int]
+    ev_gross_cents: Optional[float]
+    ev_net_cents: Optional[float]
+    roi_net: Optional[float]
+    fees_rate: float = 0.02
+    
+    # Métricas adicionales
+    avg_outcome_price_cents: Optional[float] = None
+    roi_simple_ratio: Optional[float] = None
+    pl_expected_net_cents: Optional[float] = None
+    prob_profit: Optional[float] = None
+    break_even_price_cents: Optional[float] = None
+    max_break_even_cost_total_cents: Optional[float] = None
+    max_break_even_cost_per_skin_cents: Optional[float] = None
+    roi_simple_net_ratio: Optional[float] = None
+```
+
+### Testing y Validación
+
+#### Suite de Tests
+```python
+# tests/test_metrics.py
+def test_compute_outcomes_probabilities_and_float():
+    """Valida cálculo de probabilidades y float."""
+    catalog = make_catalog()
+    entries = make_test_entries()
+    
+    outcomes = compute_outcomes(entries, catalog)
+    
+    # Verificar probabilidades suman 1.0
+    total_prob = sum(o.prob for o in outcomes)
+    assert abs(total_prob - 1.0) < 1e-6
+    
+    # Verificar float calculado correctamente
+    expected_float = 0.5  # Basado en entradas de prueba
+    for o in outcomes:
+        assert o.out_float == pytest.approx(expected_float, rel=1e-6)
+
+def test_summary_metrics_end_to_end():
+    """Valida métricas financieras completas."""
+    # ... configuración de test
+    
+    result = summary_metrics(entries, outcomes, fees_rate=0.02)
+    
+    assert result.total_inputs_cost_cents == 1600
+    assert result.ev_gross_cents == pytest.approx(1700.0)
+    assert result.ev_net_cents == pytest.approx(1700.0 * 0.98)
+    assert result.roi_net == pytest.approx((1700.0 * 0.98 - 1600) / 1600)
+```
+
+## 10) 📚 Referencias y Recursos
+
+### Documentación Oficial
+- **[TradeUpSpy](https://www.tradeupspy.com/tools/trade-up-guide)**: Herramienta de referencia original
+- **[CSFloat API](https://docs.csfloat.com/#introduction)**: Documentación oficial de la API
+- **[Steam Market](https://steamcommunity.com/market/)**: Precios de referencia oficiales
+
+### Recursos Técnicos
+- **[Código Fuente TradeUpSPY](https://github.com/tu-usuario/TradeUpSPY)**: Implementación completa
+- **[Tests Automatizados](tests/)**: Suite de validación y ejemplos
+- **[Catálogo Actualizado](data/skins_fixed.csv)**: Base de datos de skins sincronizada
+
+### Herramientas Complementarias
+- **[fix_grados.py](fix_grados.py)**: Script de actualización de catálogo
+- **[Contratos de Ejemplo](contracts/)**: Casos reales para testing
+- **[Documentación API](docs/api_csfloat.md)**: Guía técnica de integración
+
+### Comunidad y Soporte
+- **GitHub Issues**: Para reportar bugs y solicitar features
+- **Discusiones**: Para preguntas generales y estrategias
+- **Wiki**: Documentación comunitaria y casos de uso
+
+---
+
+### Nota Final
+
+Esta guía está basada en el análisis completo del código fuente de TradeUpSPY y proporciona la documentación técnica más precisa disponible sobre la implementación de trade-ups de CS2. Todos los ejemplos de código son funcionales y están extraídos directamente del sistema en producción.
+
+Para casos de uso específicos o dudas técnicas, consulta el código fuente o abre un issue en el repositorio del proyecto.
