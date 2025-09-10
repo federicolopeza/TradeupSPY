@@ -25,6 +25,7 @@ import subprocess
 import time
 import shlex
 from pathlib import Path
+import os
 from typing import Optional
 from textwrap import shorten
 
@@ -136,6 +137,17 @@ def main() -> None:
     )
     ap.add_argument("--retries", type=int, default=2, help="Reintentos para errores transitorios (rate-limit/red/timeout)")
     ap.add_argument("--backoff", type=float, default=5.0, help="Backoff base (segundos) para reintentos transitorios")
+    ap.add_argument(
+        "--echo-cli",
+        choices=["always", "on_error", "never"],
+        default="never",
+        help="Imprime el output completo del CLI por contrato: always | on_error | never",
+    )
+    ap.add_argument(
+        "--save-cli-output",
+        action="store_true",
+        help="Guarda stdout/stderr del CLI para TODOS los contratos en artifacts/",
+    )
     args = ap.parse_args()
 
     src = Path(args.contracts_dir)
@@ -168,6 +180,11 @@ def main() -> None:
             )
 
     total = 0
+    # Forzar UTF-8 en el subproceso para evitar UnicodeEncodeError en Windows (cp1252)
+    child_env = os.environ.copy()
+    child_env["PYTHONIOENCODING"] = "utf-8"
+    child_env["PYTHONUTF8"] = "1"
+    artifacts_dir = Path("artifacts") if 'artifacts_dir' not in locals() else artifacts_dir
     try:
         for fp in files:
             rel = fp.relative_to(src)
@@ -184,8 +201,24 @@ def main() -> None:
             attempts = 0
             while True:
                 attempts += 1
-                p = subprocess.run(cmd, capture_output=True, text=True)
+                p = subprocess.run(
+                    cmd,
+                    capture_output=True,
+                    text=True,
+                    encoding="utf-8",
+                    errors="replace",
+                    env=child_env,
+                )
                 stdout, stderr = p.stdout or "", p.stderr or ""
+
+                # Guardar CLI output si fue solicitado
+                if args.save_cli_output:
+                    out_path = artifacts_dir / rel.with_suffix(rel.suffix + ".out.txt")
+                    err_path = artifacts_dir / rel.with_suffix(rel.suffix + ".err.txt")
+                    ensure_parent_dir(out_path)
+                    ensure_parent_dir(err_path)
+                    out_path.write_text(stdout, encoding="utf-8", errors="ignore")
+                    err_path.write_text(stderr, encoding="utf-8", errors="ignore")
 
                 if p.returncode == 0:
                     payload = last_json_from_stdout(stdout)
@@ -225,6 +258,9 @@ def main() -> None:
 
                         tag = "✅" if rentable else "❌"
                         print(f"{tag} {status} → {rel}")
+                        # Echo del CLI si corresponde
+                        if args.echo_cli == "always":
+                            print(stdout)
                         break  # éxito, salir del while
 
                     # JSON ausente con returncode=0
@@ -232,6 +268,9 @@ def main() -> None:
                     print(f"⚠️  JSON_MISSING → {rel}")
                 else:
                     code, suggested, transitory = classify_error(stdout, stderr, p.returncode)
+                    # Echo del CLI en error si corresponde
+                    if args.echo_cli in ("always", "on_error"):
+                        print(stdout)
                     if code == "RATE_LIMIT":
                         sleep_for = float(suggested) if suggested else (args.backoff * (2 ** (attempts - 1)))
                         print(f"⏳ RATE_LIMIT → sleeping {sleep_for:.1f}s (attempt {attempts}/{args.retries+1}) → {rel}")
