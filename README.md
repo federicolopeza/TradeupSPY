@@ -134,10 +134,7 @@ python -m tradeup.cli \
 #### 4. Análisis Avanzado
 Con comisiones personalizadas y catálogo actualizado:
 ```bash
-python -m tradeup.cli \
-  --contract contracts/ejemplo_contrato.csv \
-  --catalog data/skins_fixed.csv \
-  --fees 0.15
+python -m tradeup.cli --contract contracts/ejemplo_contrato.csv --catalog data/skins_fixed.csv --fees 0.15
 ```
 
 ### Parámetros de Línea de Comandos
