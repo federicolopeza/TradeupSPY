@@ -473,3 +473,87 @@ Si TradeUpSPY te ha sido útil:
 - 📢 **Comparte** con otros traders de CS2
 
 **¡Gracias por usar TradeUpSPY!** 🚀
+
+---
+
+# 🧰 Generador de Precios Locales (cs2prices)
+
+`cs2prices` es un CLI de producción que construye un CSV local con el precio más bajo por cada combinación válida de `skin × wear × StatTrak`. Usa exclusivamente CSFloat como fuente, con backoff exponencial y límites estrictos de QPS. Este CSV te permite evaluar ~660k contratos completamente offline con `--no-fetch-prices --local-prices`.
+
+## Instalación (CLI)
+
+```bash
+# Entorno de desarrollo
+python -m pip install -r requirements.txt
+python -m pip install -e .[dev]
+
+# O sólo runtime
+python -m pip install -e .
+```
+
+Esto instala el entrypoint `cs2prices`.
+
+## Variables de entorno (opcional)
+
+```bash
+# .env o variables de entorno
+CSFLOAT_API_KEY=tu_api_key
+CSFLOAT_API_BASE=https://csfloat.com
+```
+
+## Comandos principales
+
+```bash
+# Imprimir configuración efectiva
+cs2prices print-config
+
+# Build completo (por defecto schema A: Name,Wear,PriceCents,StatTrak)
+cs2prices build \
+  --catalog data/skins_fixed.csv \
+  --rarities restricted,classified,covert \
+  --st both \
+  --out docs/local_prices.csv \
+  --resume state/prices_build_state.json \
+  --sleep 2.0 \
+  --backoff 60 \
+  --max-pages 1 \
+  --timeout 15 \
+  --limit 0
+
+# Reanudar exactamente desde el último cursor
+cs2prices resume --resume state/prices_build_state.json
+
+# Validar CSV de precios (schema A por defecto)
+cs2prices validate docs/local_prices.csv
+
+# Métricas
+cs2prices stats --metrics state/prices_metrics.json
+
+# Cache local
+cs2prices peek-cache "StatTrak™ AK-47 | Cartel (Field-Tested)"
+cs2prices clear-cache --yes
+```
+
+## Integración con el Evaluador Offline
+
+El CSV generado por `cs2prices` es compatible con ambos formatos que acepta `tradeup/pricing.py`:
+
+- Opción A (por defecto): `Name,Wear,PriceCents,StatTrak`
+- Opción B: `MarketHashName,PriceCents`
+
+Ejecuta el evaluador completamente offline:
+
+```bash
+python -m tradeup.cli \
+  --contract contracts/ejemplo_contrato.csv \
+  --catalog data/skins_fixed.csv \
+  --no-fetch-prices \
+  --local-prices docs/local_prices.csv
+```
+
+## Notas de Robustez
+
+- Manejo de `429` y `5xx` con backoff exponencial y jitter; respeto de `Retry-After`.
+- Límite de QPS configurable con throttle por `sleep` y token-bucket para `concurrency>1`.
+- Escrituras atómicas de CSV/estado/métricas; reanudación exacta tras `SIGINT`.
+- Caché en disco (JSON por defecto; opcional SQLite).
