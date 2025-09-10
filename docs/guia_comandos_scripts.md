@@ -348,3 +348,96 @@ python scripts/evaluate_all_contracts.py \
 
 ### Notas sobre argparse
 - Para mostrar el carácter `%` en mensajes de ayuda de `argparse`, debe escribirse `%%` en el string de ayuda. En `scripts/evaluate_all_contracts.py` ya está aplicado en el help de `--fees` ("2%% CSFloat").
+
+
+
+
+----------------------------------------------------------
+¡Listo! Te dejo el **COMANDO SUPREMO** (PowerShell) para **generar la mayor variedad** de contratos en una sola tirada: mezcla **3 rarezas**, **ST/NoST (50/50)**, **1–3 colecciones**, y **3 modos de floats** (fnorm por entrada para extremos, beta sesgada a FN/MW, y beta neutra). Todo cae bajo un **out-dir con timestamp** para que no pises corridas.
+
+> Pega esto tal cual en tu consola de PowerShell (estás parado en la raíz del repo):
+# === SUPREME GENERATOR ===
+$ts   = Get-Date -Format "yyyyMMdd_HHmmss"
+$out  = "contracts\supreme_$ts"
+$rar  = @('restricted','classified','covert')
+
+# Para cada rareza, generamos 3 "sabores" de floats con semillas distintas.
+foreach ($r in $rar) {
+
+  # 1) f_norm por ENTRADA (cubre extremos FN/MW/FT/WW/BS) → MUCHA diversidad útil
+  python scripts/random_generate_contracts.py `
+    --catalog data/skins_fixed.csv `
+    --rarity $r `
+    --n 120000 `
+    --collections-min 1 `
+    --collections-max 3 `
+    --st both --p-st 0.5 `
+    --float-mode fnorm `
+    --fnorm-values "0.0,0.12,0.25,0.50,0.75,0.90,1.0" `
+    --fnorm-per entry `
+    --seed 42 `
+    --out-dir $out
+
+  # 2) beta sesgada a FLOTA BAJA (favorece FN/MW) → explora “mejores” rangos
+  python scripts/random_generate_contracts.py `
+    --catalog data/skins_fixed.csv `
+    --rarity $r `
+    --n 60000 `
+    --collections-min 1 `
+    --collections-max 3 `
+    --st both --p-st 0.5 `
+    --float-mode beta --beta-a 0.8 --beta-b 3.2 `
+    --seed 101 `
+    --out-dir $out
+
+  # 3) beta neutra (2,2) → rellena densidad intermedia
+  python scripts/random_generate_contracts.py `
+    --catalog data/skins_fixed.csv `
+    --rarity $r `
+    --n 40000 `
+    --collections-min 1 `
+    --collections-max 3 `
+    --st both --p-st 0.5 `
+    --float-mode beta --beta-a 2 --beta-b 2 `
+    --seed 202 `
+    --out-dir $out
+}
+
+"$([Environment]::NewLine)Listo. Contratos generados en: $out"
+
+
+### Qué te da esto
+
+* **Gran cobertura** en *una sola ejecución*: 3 rarezas × (120k + 60k + 40k) ≈ **660k contratos** en total.
+* **Diversidad real**:
+
+  * `fnorm-per entry` con valores `[0.0 … 1.0]` explora a fondo los extremos (FN/MW/FT/WW/BS).
+  * `beta` sesgada a bajo empuja a FN/MW donde suelen aparecer rentables.
+  * `beta(2,2)` añade variedad “neutra”.
+* **Carpetas limpias**: `contracts/supreme_YYYYMMDD_HHMMSS/<rarity>/<ST|NoST>/<1c|2c|3c>/...`
+
+---
+
+## Una sola corrida de validación (luego)
+
+Cuando termine la generación, valida TODO lo creado con **un solo comando**:
+
+python scripts/evaluate_all_contracts.py `
+  --contracts-dir $out `
+  --catalog data/skins_fixed.csv `
+  --sleep 1.5 `
+  --fees 0.02 `
+  --retries 3 `
+  --backoff 6
+
+
+> Es recursivo: evalúa **todas** las subcarpetas (las tres rarezas, ST/NoST y 1–3 colecciones).
+> Si prefieres “primero offline”, añade: `--extra-cli-flags "--no-fetch-prices --local-prices docs\local_prices.csv"` y luego re-evalúas solo los **OK** online.
+
+---
+
+### Tips rápidos
+
+* Si querés **más** o **menos** contratos, ajustá `--n` en cada bloque.
+* Si el disco sufre, corré por **rareza** (editá `$rar`) o bajá `--n`.
+* Esta generación es **offline**; la validación cuida rate limits (`--sleep`, `--retries`, `--backoff`).
