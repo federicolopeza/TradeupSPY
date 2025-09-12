@@ -6,6 +6,7 @@ __pycache__/
 
 # Contract generation output
 contracts/
+!contracts/.gitkeep
 artifacts/
 supreme_20250910_040228/
 contracts/supreme_20250910_040228/classified
@@ -21,7 +22,6 @@ errors/
 .idea/
 *.swp
 *.swo
-contracts/
 # OS generated files
 .DS_Store
 .DS_Store?
