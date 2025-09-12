@@ -28,6 +28,8 @@ from pathlib import Path
 import os
 from typing import Optional
 from textwrap import shorten
+from concurrent.futures import ThreadPoolExecutor, as_completed
+import threading
 
 # Patrones de diagnóstico
 RATE_LIMIT_PATTERNS = re.compile(
@@ -148,6 +150,7 @@ def main() -> None:
         action="store_true",
         help="Guarda stdout/stderr del CLI para TODOS los contratos en artifacts/",
     )
+    ap.add_argument("--workers", type=int, default=1, help="Cantidad de hilos (workers) en paralelo. 1 = secuencial")
     args = ap.parse_args()
 
     src = Path(args.contracts_dir)
@@ -185,107 +188,115 @@ def main() -> None:
     child_env["PYTHONIOENCODING"] = "utf-8"
     child_env["PYTHONUTF8"] = "1"
     artifacts_dir = Path("artifacts") if 'artifacts_dir' not in locals() else artifacts_dir
-    try:
-        for fp in files:
-            rel = fp.relative_to(src)
-            cmd = [
-                "python", "-m", "tradeup.cli",
-                "--contract", str(fp),
-                "--catalog", str(args.catalog),
-                "--json",
-                "--fees", str(args.fees),
-            ]
-            if args.extra_cli_flags:
-                cmd.extend(shlex.split(args.extra_cli_flags))
 
-            attempts = 0
-            while True:
-                attempts += 1
-                p = subprocess.run(
-                    cmd,
-                    capture_output=True,
-                    text=True,
-                    encoding="utf-8",
-                    errors="replace",
-                    env=child_env,
-                )
-                stdout, stderr = p.stdout or "", p.stderr or ""
+    # Locks para I/O concurrente
+    io_lock = threading.Lock()
 
-                # Guardar CLI output si fue solicitado
-                if args.save_cli_output:
-                    out_path = artifacts_dir / rel.with_suffix(rel.suffix + ".out.txt")
-                    err_path = artifacts_dir / rel.with_suffix(rel.suffix + ".err.txt")
+    def process_one(fp: Path) -> None:
+        nonlocal total
+        rel = fp.relative_to(src)
+        cmd = [
+            "python", "-m", "tradeup.cli",
+            "--contract", str(fp),
+            "--catalog", str(args.catalog),
+            "--json",
+            "--fees", str(args.fees),
+        ]
+        if args.extra_cli_flags:
+            # En Windows, usar posix=False para no tratar '\\' como carácter de escape
+            cmd.extend(shlex.split(args.extra_cli_flags, posix=False))
+
+        attempts = 0
+        while True:
+            attempts += 1
+            p = subprocess.run(
+                cmd,
+                capture_output=True,
+                text=True,
+                encoding="utf-8",
+                errors="replace",
+                env=child_env,
+            )
+            stdout, stderr = p.stdout or "", p.stderr or ""
+
+            # Guardar CLI output si fue solicitado
+            if args.save_cli_output:
+                out_path = artifacts_dir / rel.with_suffix(rel.suffix + ".out.txt")
+                err_path = artifacts_dir / rel.with_suffix(rel.suffix + ".err.txt")
+                with io_lock:
                     ensure_parent_dir(out_path)
                     ensure_parent_dir(err_path)
                     out_path.write_text(stdout, encoding="utf-8", errors="ignore")
                     err_path.write_text(stderr, encoding="utf-8", errors="ignore")
 
-                if p.returncode == 0:
-                    payload = last_json_from_stdout(stdout)
-                    if payload:
-                        decision = payload.get("decision", "")
-                        summary = payload.get("summary", {}) or {}
-                        total_cost_raw = summary.get("total_cost_cents")
-                        ev_net_raw     = summary.get("ev_net_cents")
+            if p.returncode == 0:
+                payload = last_json_from_stdout(stdout)
+                if payload:
+                    decision = payload.get("decision", "")
+                    summary = payload.get("summary", {}) or {}
+                    total_cost_raw = summary.get("total_cost_cents")
+                    ev_net_raw     = summary.get("ev_net_cents")
 
-                        total_cost = total_cost_raw if total_cost_raw is not None else 0
-                        ev_gross   = summary.get("ev_gross_cents") or 0
-                        ev_net     = ev_net_raw if ev_net_raw is not None else 0
-                        pnl_net    = summary.get("pl_expected_net_cents") or 0
-                        roi_net    = summary.get("roi_net") or 0.0
-                        prob       = summary.get("prob_profit") or 0.0
-                        be         = summary.get("break_even_price_cents") or 0
+                    total_cost = total_cost_raw if total_cost_raw is not None else 0
+                    ev_gross   = summary.get("ev_gross_cents") or 0
+                    ev_net     = ev_net_raw if ev_net_raw is not None else 0
+                    pnl_net    = summary.get("pl_expected_net_cents") or 0
+                    roi_net    = summary.get("roi_net") or 0.0
+                    prob       = summary.get("prob_profit") or 0.0
+                    be         = summary.get("break_even_price_cents") or 0
 
-                        # Decisión robusta
-                        if decision.startswith("✅"):
-                            rentable = True
-                        elif decision.startswith("❌"):
-                            rentable = False
-                        elif (ev_net_raw is not None) and (total_cost_raw is not None):
-                            rentable = ev_net_raw >= total_cost_raw
-                        else:
-                            rentable = False
+                    # Decisión robusta
+                    if decision.startswith("✅"):
+                        rentable = True
+                    elif decision.startswith("❌"):
+                        rentable = False
+                    elif (ev_net_raw is not None) and (total_cost_raw is not None):
+                        rentable = ev_net_raw >= total_cost_raw
+                    else:
+                        rentable = False
 
-                        status = "OK" if rentable else "FAIL"
-                        dest = (ok if rentable else fail) / rel
+                    status = "OK" if rentable else "FAIL"
+                    dest = (ok if rentable else fail) / rel
+                    with io_lock:
                         dest.parent.mkdir(parents=True, exist_ok=True)
-                        shutil.move(str(fp), str(dest))
-
+                        if fp.exists():
+                            shutil.move(str(fp), str(dest))
                         append_result_csv(
                             log_path, rel, decision, status,
                             total_cost, ev_gross, ev_net, pnl_net, roi_net, prob, be
                         )
 
-                        tag = "✅" if rentable else "❌"
-                        print(f"{tag} {status} → {rel}")
-                        # Echo del CLI si corresponde
-                        if args.echo_cli == "always":
-                            print(stdout)
-                        break  # éxito, salir del while
-
-                    # JSON ausente con returncode=0
-                    code, suggested, transitory = ("JSON_MISSING", None, False)
-                    print(f"⚠️  JSON_MISSING → {rel}")
-                else:
-                    code, suggested, transitory = classify_error(stdout, stderr, p.returncode)
-                    # Echo del CLI en error si corresponde
-                    if args.echo_cli in ("always", "on_error"):
+                    tag = "✅" if rentable else "❌"
+                    print(f"{tag} {status} → {rel}")
+                    # Echo del CLI si corresponde
+                    if args.echo_cli == "always":
                         print(stdout)
-                    if code == "RATE_LIMIT":
-                        sleep_for = float(suggested) if suggested else (args.backoff * (2 ** (attempts - 1)))
-                        print(f"⏳ RATE_LIMIT → sleeping {sleep_for:.1f}s (attempt {attempts}/{args.retries+1}) → {rel}")
+                    break  # éxito
+
+                # JSON ausente con returncode=0
+                code, suggested, transitory = ("JSON_MISSING", None, False)
+                print(f"⚠️  JSON_MISSING → {rel}")
+            else:
+                code, suggested, transitory = classify_error(stdout, stderr, p.returncode)
+                # Echo del CLI en error si corresponde
+                if args.echo_cli in ("always", "on_error"):
+                    print(stdout)
+                if code == "RATE_LIMIT":
+                    sleep_for = float(suggested) if suggested else (args.backoff * (2 ** (attempts - 1)))
+                    print(f"⏳ RATE_LIMIT → sleeping {sleep_for:.1f}s (attempt {attempts}/{args.retries+1}) → {rel}")
+                    time.sleep(max(0.0, sleep_for))
+
+            # Manejo de reintentos
+            if p.returncode != 0 or code == "JSON_MISSING":
+                if transitory and attempts <= args.retries:
+                    if code in ("TIMEOUT", "NETWORK", "UNKNOWN"):
+                        sleep_for = args.backoff * (2 ** (attempts - 1))
+                        print(f"🌐 {code} → reintento en {sleep_for:.1f}s (attempt {attempts}/{args.retries+1}) → {rel}")
                         time.sleep(max(0.0, sleep_for))
+                    continue
 
-                # Manejo de reintentos
-                if p.returncode != 0 or code == "JSON_MISSING":
-                    if transitory and attempts <= args.retries:
-                        if code in ("TIMEOUT", "NETWORK", "UNKNOWN"):
-                            sleep_for = args.backoff * (2 ** (attempts - 1))
-                            print(f"🌐 {code} → reintento en {sleep_for:.1f}s (attempt {attempts}/{args.retries+1}) → {rel}")
-                            time.sleep(max(0.0, sleep_for))
-                        continue
-
-                    # Persistente: registrar artefactos y mover a ERROR
+                # Persistente: registrar artefactos y mover a ERROR
+                with io_lock:
                     write_error_artifacts(err, rel, stdout, stderr)
                     append_error_csv(
                         error_csv, rel, code, p.returncode,
@@ -294,14 +305,36 @@ def main() -> None:
                     )
                     dest = err / rel
                     dest.parent.mkdir(parents=True, exist_ok=True)
-                    shutil.move(str(fp), str(dest))
+                    if fp.exists():
+                        shutil.move(str(fp), str(dest))
                     print(f"🟥 ERROR:{code} → {rel}")
-                    break  # siguiente archivo
+                break  # siguiente archivo
 
-            total += 1
-            if args.max and total >= args.max:
-                break
+        with io_lock:
+            nonlocal_total = total + 1
+            total = nonlocal_total
+
+        # Respetar sleep si corresponde
+        if args.sleep and args.sleep > 0:
             time.sleep(max(0.0, args.sleep))
+
+    try:
+        if args.workers <= 1:
+            for fp in files:
+                process_one(fp)
+                if args.max and total >= args.max:
+                    break
+        else:
+            with ThreadPoolExecutor(max_workers=max(1, args.workers)) as ex:
+                futures = []
+                for fp in files:
+                    if args.max and total >= args.max:
+                        break
+                    futures.append(ex.submit(process_one, fp))
+                for fut in as_completed(futures):
+                    _ = fut.result()  # propagar excepciones si ocurrieran
+                    if args.max and total >= args.max:
+                        break
     except KeyboardInterrupt:
         print(f"\n[INTERRUPT] Cortado por usuario tras {total} contratos evaluados.")
 

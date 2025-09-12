@@ -38,6 +38,7 @@ class AppConfig(BaseModel):
     # Env/API
     csfloat_api_key: Optional[str] = None
     csfloat_api_base: str = "https://csfloat.com"
+    auth_style: str = "both"  # 'bearer' | 'raw' | 'both'
 
     @field_validator("rarities")
     @classmethod
@@ -102,6 +103,7 @@ def load_config_from_env_and_args(
 
     api_key = os.getenv("CSFLOAT_API_KEY") or None
     api_base = os.getenv("CSFLOAT_API_BASE") or os.getenv("CSFLOAT_BASE") or "https://csfloat.com"
+    auth_style = os.getenv("CSFLOAT_AUTH_STYLE", "both")
 
     rarities_list = [x.strip() for x in rarities.split(",") if x.strip()]
 
@@ -128,5 +130,6 @@ def load_config_from_env_and_args(
         seed=int(seed),
         csfloat_api_key=api_key,
         csfloat_api_base=api_base,
+        auth_style=auth_style,
     )
     return cfg

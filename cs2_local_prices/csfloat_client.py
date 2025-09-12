@@ -6,7 +6,7 @@ import random
 import time
 from datetime import datetime, timezone
 from email.utils import parsedate_to_datetime
-from typing import Any, Dict, Optional, Tuple
+from typing import Any, Dict, Optional, Tuple, Iterable
 
 import httpx
 
@@ -61,8 +61,24 @@ def to_cents(price: Any) -> Optional[int]:
 
 
 def extract_lowest_price(json_data: Dict[str, Any]) -> Optional[int]:
-    # Expect something like {'listings': [{... 'price': 12.34 or 1234}]}
-    # But be robust to alternative keys.
+    """Extrae el menor precio (en centavos) de posibles estructuras JSON.
+
+    Soporta múltiples variantes observadas en APIs públicas:
+    - Top-level: lowest_price, lowest_price_cents
+    - Listas bajo: listings, data, results
+    - Campos de precio en item: price_cents, priceCents, price, price_usd, price_usd_cents,
+      lowest_price, raw_price, converted_price, converted_price_cents
+    - Niveles anidados: item["pricing"][...]
+    """
+
+    # 1) Revisar top-level
+    for k in ("lowest_price_cents", "lowest_price", "price_cents", "price"):
+        if k in json_data:
+            c = to_cents(json_data.get(k))
+            if c is not None:
+                return c
+
+    # 2) Determinar colección de listings
     listings = None
     for key in ("listings", "data", "results"):
         if isinstance(json_data.get(key), list):
@@ -70,36 +86,62 @@ def extract_lowest_price(json_data: Dict[str, Any]) -> Optional[int]:
             break
     if not listings:
         return None
+
+    def iter_candidate_prices(obj: Dict[str, Any]) -> Iterable[Optional[int]]:
+        # Campos directos
+        for k in (
+            "price_cents",
+            "priceCents",
+            "price_usd_cents",
+            "converted_price_cents",
+            "price",
+            "price_usd",
+            "converted_price",
+            "lowest_price",
+            "raw_price",
+        ): 
+            if k in obj:
+                yield to_cents(obj.get(k))
+        # Campos anidados conocidos
+        pricing = obj.get("pricing")
+        if isinstance(pricing, dict):
+            for k in ("price_cents", "price", "price_usd", "price_usd_cents"):
+                if k in pricing:
+                    yield to_cents(pricing.get(k))
+
     min_cents: Optional[int] = None
     for item in listings:
-        # Try multiple price fields
-        for k in ("price_cents", "price", "price_usd", "lowest_price", "raw_price"):
-            if k in item:
-                cents = to_cents(item[k])
-                if cents is not None:
-                    if min_cents is None or cents < min_cents:
-                        min_cents = cents
-        # Some APIs nest under item['pricing']
-        if "pricing" in item and isinstance(item["pricing"], dict):
-            for k in ("price_cents", "price", "price_usd"):
-                if k in item["pricing"]:
-                    cents = to_cents(item["pricing"][k])
-                    if cents is not None:
-                        if min_cents is None or cents < min_cents:
-                            min_cents = cents
+        if not isinstance(item, dict):
+            continue
+        for cents in iter_candidate_prices(item):
+            if cents is None:
+                continue
+            if min_cents is None or cents < min_cents:
+                min_cents = cents
     return min_cents
 
 
 class CSFloatClient:
     def __init__(self, cfg: AppConfig, transport: Optional[httpx.BaseTransport] = None) -> None:
         self.cfg = cfg
+        # Build headers according to auth style expected by CSFloat
+        base_headers: Dict[str, str] = {
+            "Accept": "application/json",
+            "User-Agent": "cs2-local-prices/0.1 (+https://github.com/falopp/TradeupSPY)",
+        }
+        if cfg.csfloat_api_key:
+            style = (cfg.auth_style or "both").lower()
+            if style in ("bearer", "both"):
+                base_headers["Authorization"] = f"Bearer {cfg.csfloat_api_key}"
+            if style in ("raw", "both"):
+                # Some deployments expect the raw token in the Authorization header without Bearer
+                # Using lowercase key to avoid overwriting the Bearer entry in case-insensitive dicts
+                base_headers["authorization"] = cfg.csfloat_api_key
+
         self.client = httpx.AsyncClient(
             base_url=cfg.csfloat_api_base,
             timeout=httpx.Timeout(cfg.timeout_seconds, read=cfg.timeout_seconds, write=cfg.timeout_seconds),
-            headers={
-                "Accept": "application/json",
-                **({"Authorization": f"Bearer {cfg.csfloat_api_key}"} if cfg.csfloat_api_key else {}),
-            },
+            headers=base_headers,
             transport=transport,
         )
 
@@ -112,7 +154,7 @@ class CSFloatClient:
         Returns (price_cents or None, meta dict with status/latency/retries)
         """
         meta: Dict[str, Any] = {"retries": 0, "status": None, "latency_ms": 0.0}
-        params = {
+        base_params = {
             "sort_by": "lowest_price",
             "market_hash_name": mhn,
             "limit": str(self.cfg.max_pages * 50),
@@ -125,14 +167,68 @@ class CSFloatClient:
             attempt += 1
             try:
                 t0 = time.time()
-                resp = await self.client.get("/api/v1/listings", params=params)
-                latency = (time.time() - t0) * 1000.0
-                meta["latency_ms"] = latency
-                meta["status"] = resp.status_code
-                if resp.status_code == 200:
-                    data = resp.json()
-                    cents = extract_lowest_price(data)
-                    return cents, meta
+                # Try a set of parameter variants to accommodate API differences
+                variants = []
+                variants.append(base_params)
+                # v1: without category
+                p_no_cat = dict(base_params)
+                p_no_cat.pop("category", None)
+                variants.append(p_no_cat)
+                # v2: without sort_by
+                p_no_sort = dict(p_no_cat)
+                p_no_sort.pop("sort_by", None)
+                variants.append(p_no_sort)
+                # v3: use 'name' instead of 'market_hash_name'
+                p_name = dict(p_no_sort)
+                mh = p_name.pop("market_hash_name", mhn)
+                p_name["name"] = mh
+                variants.append(p_name)
+
+                last_resp = None
+                for vp in variants:
+                    resp = await self.client.get("/api/v1/listings", params=vp)
+                    last_resp = resp
+                    latency = (time.time() - t0) * 1000.0
+                    meta["latency_ms"] = latency
+                    meta["status"] = resp.status_code
+                    if resp.status_code == 200:
+                        data = resp.json()
+                        cents = extract_lowest_price(data)
+                        if cents is None:
+                            # Instrumentación: loguear forma del payload para diagnóstico
+                            try:
+                                top_keys = list(data.keys()) if isinstance(data, dict) else type(data).__name__
+                                sample_keys = []
+                                listings = None
+                                for lk in ("listings", "data", "results"):
+                                    if isinstance(data, dict) and isinstance(data.get(lk), list):
+                                        listings = data.get(lk)
+                                        break
+                                if isinstance(listings, list) and listings:
+                                    first = listings[0]
+                                    if isinstance(first, dict):
+                                        sample_keys = list(first.keys())[:20]
+                                logger.debug(
+                                    "No price extracted for MHN=%s. top_keys=%s sample_item_keys=%s",
+                                    mhn,
+                                    top_keys,
+                                    sample_keys,
+                                )
+                            except Exception:
+                                pass
+                            # Probar siguiente variante
+                            continue
+                        # Precio encontrado, retornar
+                        return cents, meta
+                    if resp.status_code in (400, 403):
+                        # Try next variant immediately
+                        continue
+                    # break to outer handling for 429/5xx/others
+                    break
+
+                # If we exhausted variants with 200 (sin precio) o 400/403, treat as failure for this MHN
+                if last_resp is not None and last_resp.status_code in (200, 400, 403):
+                    return None, meta
                 if resp.status_code == 429:
                     retry_after = resp.headers.get("Retry-After")
                     if retry_after is not None:

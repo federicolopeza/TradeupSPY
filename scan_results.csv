@@ -1,1 +1,45 @@
 file,decision,total_cost_usd,ev_gross_usd,ev_net_usd,pnl_net_usd,roi_net_pct,prob_profit_pct,break_even_usd
+1c\contract__rand__0000000.csv,❌ NO rentable,12544.00,295.88,289.96,-12254.04,-97.69%,0.00%,12800.00,FAIL
+1c\contract__rand__0000001.csv,❔ Incompleto (faltan precios),0.00,14.32,14.03,0.00,0.00%,0.00%,0.00,FAIL
+1c\contract__rand__0000002.csv,❔ Incompleto (faltan precios),0.00,10399.99,10191.99,0.00,0.00%,0.00%,0.00,FAIL
+1c\contract__rand__0000003.csv,❔ Incompleto (faltan precios),0.00,18.75,18.38,0.00,0.00%,0.00%,0.00,FAIL
+1c\contract__rand__0000004.csv,❔ Incompleto (faltan precios),0.00,1425.00,1396.50,0.00,0.00%,0.00%,0.00,FAIL
+1c\contract__rand__0000005.csv,❔ Incompleto (faltan precios),0.00,0.00,0.00,0.00,0.00%,0.00%,0.00,FAIL
+1c\contract__rand__0000006.csv,❔ Incompleto (faltan precios),0.00,36.62,35.88,0.00,0.00%,0.00%,0.00,FAIL
+1c\contract__rand__0000007.csv,❔ Incompleto (faltan precios),0.00,0.00,0.00,0.00,0.00%,0.00%,0.00,FAIL
+1c\contract__rand__0000008.csv,❔ Incompleto (faltan precios),0.00,17.04,16.70,0.00,0.00%,0.00%,0.00,FAIL
+1c\contract__rand__0000010.csv,❌ NO rentable,44.84,11.59,11.36,-33.48,-74.67%,0.00%,45.76,FAIL
+1c\contract__rand__0000011.csv,❌ NO rentable,37.66,11.59,11.36,-26.30,-69.84%,0.00%,38.43,FAIL
+1c\contract__rand__0000013.csv,❌ NO rentable,84.12,16.11,15.79,-68.33,-81.23%,0.00%,85.84,FAIL
+1c\contract__rand__0000014.csv,❔ Incompleto (faltan precios),0.00,0.00,0.00,0.00,0.00%,0.00%,0.00,FAIL
+1c\contract__rand__0000015.csv,❔ Incompleto (faltan precios),126.91,0.00,0.00,0.00,0.00%,0.00%,129.50,FAIL
+1c\contract__rand__0000019.csv,❔ Incompleto (faltan precios),0.00,68.51,67.14,0.00,0.00%,0.00%,0.00,FAIL
+1c\contract__rand__0000020.csv,❌ NO rentable,62.08,32.70,32.04,-30.04,-48.39%,0.00%,63.35,FAIL
+1c\contract__rand__0000021.csv,❔ Incompleto (faltan precios),0.00,0.00,0.00,0.00,0.00%,0.00%,0.00,FAIL
+1c\contract__rand__0000022.csv,❔ Incompleto (faltan precios),0.00,10399.99,10191.99,0.00,0.00%,0.00%,0.00,FAIL
+1c\contract__rand__0000023.csv,❔ Incompleto (faltan precios),322.34,0.00,0.00,0.00,0.00%,0.00%,328.92,FAIL
+1c\contract__rand__0000024.csv,❔ Incompleto (faltan precios),0.00,11.50,11.27,0.00,0.00%,0.00%,0.00,FAIL
+1c\contract__rand__0000025.csv,❔ Incompleto (faltan precios),0.00,36.85,36.11,0.00,0.00%,0.00%,0.00,FAIL
+1c\contract__rand__0000026.csv,❔ Incompleto (faltan precios),0.00,4.37,4.28,0.00,0.00%,0.00%,0.00,FAIL
+1c\contract__rand__0000027.csv,❌ NO rentable,174.65,75.46,73.95,-100.70,-57.66%,0.00%,178.21,FAIL
+1c\contract__rand__0000028.csv,❔ Incompleto (faltan precios),0.00,0.00,0.00,0.00,0.00%,0.00%,0.00,FAIL
+1c\contract__rand__0000029.csv,❔ Incompleto (faltan precios),0.00,68.51,67.14,0.00,0.00%,0.00%,0.00,FAIL
+1c\contract__rand__0000030.csv,❔ Incompleto (faltan precios),0.00,4.84,4.75,0.00,0.00%,0.00%,0.00,FAIL
+1c\contract__rand__0000031.csv,❔ Incompleto (faltan precios),0.00,1137.30,1114.55,0.00,0.00%,0.00%,0.00,FAIL
+1c\contract__rand__0000032.csv,❌ NO rentable,74.81,52.60,51.55,-23.26,-31.09%,50.00%,76.34,FAIL
+1c\contract__rand__0000034.csv,❌ NO rentable,1161.82,562.42,551.17,-610.65,-52.56%,0.00%,1185.53,FAIL
+1c\contract__rand__0000035.csv,❔ Incompleto (faltan precios),0.00,17.39,17.05,0.00,0.00%,0.00%,0.00,FAIL
+1c\contract__rand__0000036.csv,❔ Incompleto (faltan precios),56.94,0.00,0.00,0.00,0.00%,0.00%,58.10,FAIL
+1c\contract__rand__0000038.csv,❔ Incompleto (faltan precios),0.00,25.79,25.27,0.00,0.00%,0.00%,0.00,FAIL
+1c\contract__rand__0000039.csv,❔ Incompleto (faltan precios),0.00,2393.86,2345.98,0.00,0.00%,0.00%,0.00,FAIL
+1c\contract__rand__0000041.csv,❔ Incompleto (faltan precios),10.64,0.00,0.00,0.00,0.00%,0.00%,10.86,FAIL
+1c\contract__rand__0000042.csv,❔ Incompleto (faltan precios),0.00,0.00,0.00,0.00,0.00%,0.00%,0.00,FAIL
+1c\contract__rand__0000044.csv,❌ NO rentable,39.33,10.35,10.14,-29.19,-74.21%,0.00%,40.13,FAIL
+1c\contract__rand__0000045.csv,❔ Incompleto (faltan precios),0.00,25.79,25.27,0.00,0.00%,0.00%,0.00,FAIL
+1c\contract__rand__0000046.csv,❔ Incompleto (faltan precios),95.34,0.00,0.00,0.00,0.00%,0.00%,97.29,FAIL
+1c\contract__rand__0000047.csv,❔ Incompleto (faltan precios),0.00,0.00,0.00,0.00,0.00%,0.00%,0.00,FAIL
+1c\contract__rand__0000048.csv,❔ Incompleto (faltan precios),284.01,0.00,0.00,0.00,0.00%,0.00%,289.81,FAIL
+1c\contract__rand__0000049.csv,❌ NO rentable,545.19,39.66,38.87,-506.32,-92.87%,0.00%,556.32,FAIL
+1c\contract__rand__0000050.csv,❔ Incompleto (faltan precios),0.00,14.32,14.03,0.00,0.00%,0.00%,0.00,FAIL
+1c\contract__rand__0000051.csv,❔ Incompleto (faltan precios),289.67,0.00,0.00,0.00,0.00%,0.00%,295.58,FAIL
+1c\contract__rand__0000052.csv,❔ Incompleto (faltan precios),0.00,17.27,16.92,0.00,0.00%,0.00%,0.00,FAIL

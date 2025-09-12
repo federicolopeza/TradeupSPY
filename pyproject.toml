@@ -10,7 +10,7 @@ readme = "README.md"
 authors = [
   { name = "Falopp Team" },
 ]
-license = { text = "MIT" }
+license = "MIT"
 requires-python = ">=3.11"
 dependencies = [
   "httpx>=0.27.0",
@@ -33,6 +33,14 @@ dev = [
 
 [project.scripts]
 cs2prices = "cs2_local_prices.cli:app"
+
+[tool.setuptools]
+packages = [
+  "cs2_local_prices",
+]
+
+[tool.setuptools.package-dir]
+cs2_local_prices = "cs2_local_prices"
 
 [tool.black]
 line-length = 100
