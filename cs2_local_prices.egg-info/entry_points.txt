@@ -1,2 +1,0 @@
-[console_scripts]
-cs2prices = cs2_local_prices.cli:app
