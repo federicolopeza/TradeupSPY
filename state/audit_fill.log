@@ -80,3 +80,395 @@ Generado: state\missing_contracts.csv
                              8Field-Tested%29&limit=50&category                
                              =1 "HTTP/1.1 429 Too Many                         
                              Requests"                                         
+C:\Users\Lopez\AppData\Roaming\Python\Python313\site-packages\pydantic\_internal\_fields.py:198: UserWarning: Field name "schema" in "AppConfig" shadows an attribute in parent "BaseModel"
+  warnings.warn(
+Esperados: 6280 | Resueltos: 4549 | Faltantes: 1765
+Generado: state\missing_contracts.csv
+[09/12/25 02:40:11] INFO     HTTP Request: GET                  _client.py:1786
+                             https://csfloat.com/api/v1/listing                
+                             s?sort_by=lowest_price&market_hash                
+                             _name=AK-47%20%7C%20Rat%20Rod%20%2                
+                             8Field-Tested%29&limit=50&category                
+                             =1 "HTTP/1.1 200 OK"                              
+[09/12/25 02:40:16] INFO     HTTP Request: GET                  _client.py:1786
+                             https://csfloat.com/api/v1/listing                
+                             s?sort_by=lowest_price&market_hash                
+                             _name=AK-47%20%7C%20Rat%20Rod%20%2                
+                             8Minimal%20Wear%29&limit=50&catego                
+                             ry=1 "HTTP/1.1 200 OK"                            
+[09/12/25 02:40:21] INFO     HTTP Request: GET                  _client.py:1786
+                             https://csfloat.com/api/v1/listing                
+                             s?sort_by=lowest_price&market_hash                
+                             _name=AK-47%20%7C%20Rat%20Rod%20%2                
+                             8Well-Worn%29&limit=50&category=1                 
+                             "HTTP/1.1 200 OK"                                 
+[09/12/25 02:40:26] INFO     HTTP Request: GET                  _client.py:1786
+                             https://csfloat.com/api/v1/listing                
+                             s?sort_by=lowest_price&market_hash                
+                             _name=AK-47%20%7C%20Red%20Laminate                
+                             %20%28Battle-Scarred%29&limit=50&c                
+                             ategory=1 "HTTP/1.1 200 OK"                       
+[09/12/25 02:40:31] INFO     HTTP Request: GET                  _client.py:1786
+                             https://csfloat.com/api/v1/listing                
+                             s?sort_by=lowest_price&market_hash                
+                             _name=AK-47%20%7C%20Red%20Laminate                
+                             %20%28Factory%20New%29&limit=50&ca                
+                             tegory=1 "HTTP/1.1 200 OK"                        
+C:\Users\Lopez\AppData\Roaming\Python\Python313\site-packages\pydantic\_internal\_fields.py:198: UserWarning: Field name "schema" in "AppConfig" shadows an attribute in parent "BaseModel"
+  warnings.warn(
+Esperados: 6280 | Resueltos: 0 | Faltantes: 6280
+Generado: state\missing_contracts.csv
+[09/12/25 02:43:05] INFO     HTTP Request: GET                  _client.py:1786
+                             https://csfloat.com/api/v1/listing                
+                             s?sort_by=lowest_price&market_hash                
+                             _name=AK-47%20%7C%20Red%20Laminate                
+                             %20%28Field-Tested%29&limit=50&cat                
+                             egory=1 "HTTP/1.1 200 OK"                         
+[09/12/25 02:43:10] INFO     HTTP Request: GET                  _client.py:1786
+                             https://csfloat.com/api/v1/listing                
+                             s?sort_by=lowest_price&market_hash                
+                             _name=AK-47%20%7C%20Red%20Laminate                
+                             %20%28Minimal%20Wear%29&limit=50&c                
+                             ategory=1 "HTTP/1.1 200 OK"                       
+[09/12/25 02:43:15] INFO     HTTP Request: GET                  _client.py:1786
+                             https://csfloat.com/api/v1/listing                
+                             s?sort_by=lowest_price&market_hash                
+                             _name=AK-47%20%7C%20Red%20Laminate                
+                             %20%28Well-Worn%29&limit=50&catego                
+                             ry=1 "HTTP/1.1 200 OK"                            
+[09/12/25 02:43:20] INFO     HTTP Request: GET                  _client.py:1786
+                             https://csfloat.com/api/v1/listing                
+                             s?sort_by=lowest_price&market_hash                
+                             _name=AK-47%20%7C%20Redline%20%28B                
+                             attle-Scarred%29&limit=50&category                
+                             =1 "HTTP/1.1 200 OK"                              
+[09/12/25 02:43:25] INFO     HTTP Request: GET                  _client.py:1786
+                             https://csfloat.com/api/v1/listing                
+                             s?sort_by=lowest_price&market_hash                
+                             _name=AK-47%20%7C%20Redline%20%28F                
+                             ield-Tested%29&limit=50&category=1                
+                              "HTTP/1.1 200 OK"                                
+[09/12/25 02:43:30] INFO     HTTP Request: GET                  _client.py:1786
+                             https://csfloat.com/api/v1/listing                
+                             s?sort_by=lowest_price&market_hash                
+                             _name=AK-47%20%7C%20Redline%20%28M                
+                             inimal%20Wear%29&limit=50&category                
+                             =1 "HTTP/1.1 200 OK"                              
+[09/12/25 02:43:35] INFO     HTTP Request: GET                  _client.py:1786
+                             https://csfloat.com/api/v1/listing                
+                             s?sort_by=lowest_price&market_hash                
+                             _name=AK-47%20%7C%20Redline%20%28W                
+                             ell-Worn%29&limit=50&category=1                   
+                             "HTTP/1.1 200 OK"                                 
+[09/12/25 02:43:40] INFO     HTTP Request: GET                  _client.py:1786
+                             https://csfloat.com/api/v1/listing                
+                             s?sort_by=lowest_price&market_hash                
+                             _name=AK-47%20%7C%20Safari%20Mesh%                
+                             20%28Battle-Scarred%29&limit=50&ca                
+                             tegory=1 "HTTP/1.1 200 OK"                        
+[09/12/25 02:43:45] INFO     HTTP Request: GET                  _client.py:1786
+                             https://csfloat.com/api/v1/listing                
+                             s?sort_by=lowest_price&market_hash                
+                             _name=AK-47%20%7C%20Safety%20Net%2                
+                             0%28Battle-Scarred%29&limit=50&cat                
+                             egory=1 "HTTP/1.1 200 OK"                         
+[09/12/25 02:43:50] INFO     HTTP Request: GET                  _client.py:1786
+                             https://csfloat.com/api/v1/listing                
+                             s?sort_by=lowest_price&market_hash                
+                             _name=AK-47%20%7C%20Safety%20Net%2                
+                             0%28Factory%20New%29&limit=50&cate                
+                             gory=1 "HTTP/1.1 200 OK"                          
+[09/12/25 02:43:55] INFO     HTTP Request: GET                  _client.py:1786
+                             https://csfloat.com/api/v1/listing                
+                             s?sort_by=lowest_price&market_hash                
+                             _name=AK-47%20%7C%20Safety%20Net%2                
+                             0%28Field-Tested%29&limit=50&categ                
+                             ory=1 "HTTP/1.1 200 OK"                           
+[09/12/25 02:44:00] INFO     HTTP Request: GET                  _client.py:1786
+                             https://csfloat.com/api/v1/listing                
+                             s?sort_by=lowest_price&market_hash                
+                             _name=AK-47%20%7C%20Safety%20Net%2                
+                             0%28Minimal%20Wear%29&limit=50&cat                
+                             egory=1 "HTTP/1.1 200 OK"                         
+[09/12/25 02:44:05] INFO     HTTP Request: GET                  _client.py:1786
+                             https://csfloat.com/api/v1/listing                
+                             s?sort_by=lowest_price&market_hash                
+                             _name=AK-47%20%7C%20Safety%20Net%2                
+                             0%28Well-Worn%29&limit=50&category                
+                             =1 "HTTP/1.1 200 OK"                              
+[09/12/25 02:44:10] INFO     HTTP Request: GET                  _client.py:1786
+                             https://csfloat.com/api/v1/listing                
+                             s?sort_by=lowest_price&market_hash                
+                             _name=AUG%20%7C%20Arctic%20Wolf%20                
+                             %28Well-Worn%29&limit=50&category=                
+                             1 "HTTP/1.1 200 OK"                               
+                    INFO     HTTP Request: GET                  _client.py:1786
+                             https://csfloat.com/api/v1/listing                
+                             s?sort_by=lowest_price&market_hash                
+                             _name=AUG%20%7C%20Arctic%20Wolf%20                
+                             %28Well-Worn%29&limit=50 "HTTP/1.1                
+                             200 OK"                                           
+                    INFO     HTTP Request: GET                  _client.py:1786
+                             https://csfloat.com/api/v1/listing                
+                             s?market_hash_name=AUG%20%7C%20Arc                
+                             tic%20Wolf%20%28Well-Worn%29&limit                
+                             =50 "HTTP/1.1 200 OK"                             
+[09/12/25 02:44:11] INFO     HTTP Request: GET                  _client.py:1786
+                             https://csfloat.com/api/v1/listing                
+                             s?limit=50&name=AUG%20%7C%20Arctic                
+                             %20Wolf%20%28Well-Worn%29                         
+                             "HTTP/1.1 200 OK"                                 
+[09/12/25 02:44:15] INFO     HTTP Request: GET                  _client.py:1786
+                             https://csfloat.com/api/v1/listing                
+                             s?sort_by=lowest_price&market_hash                
+                             _name=AUG%20%7C%20Colony%20%28Well                
+                             -Worn%29&limit=50&category=1                      
+                             "HTTP/1.1 200 OK"                                 
+                    INFO     HTTP Request: GET                  _client.py:1786
+                             https://csfloat.com/api/v1/listing                
+                             s?sort_by=lowest_price&market_hash                
+                             _name=AUG%20%7C%20Colony%20%28Well                
+                             -Worn%29&limit=50 "HTTP/1.1 200                   
+                             OK"                                               
+                    INFO     HTTP Request: GET                  _client.py:1786
+                             https://csfloat.com/api/v1/listing                
+                             s?market_hash_name=AUG%20%7C%20Col                
+                             ony%20%28Well-Worn%29&limit=50                    
+                             "HTTP/1.1 200 OK"                                 
+                    INFO     HTTP Request: GET                  _client.py:1786
+                             https://csfloat.com/api/v1/listing                
+                             s?limit=50&name=AUG%20%7C%20Colony                
+                             %20%28Well-Worn%29 "HTTP/1.1 200                  
+                             OK"                                               
+[09/12/25 02:44:20] INFO     HTTP Request: GET                  _client.py:1786
+                             https://csfloat.com/api/v1/listing                
+                             s?sort_by=lowest_price&market_hash                
+                             _name=AUG%20%7C%20Copperhead%20%28                
+                             Well-Worn%29&limit=50&category=1                  
+                             "HTTP/1.1 200 OK"                                 
+                    INFO     HTTP Request: GET                  _client.py:1786
+                             https://csfloat.com/api/v1/listing                
+                             s?sort_by=lowest_price&market_hash                
+                             _name=AUG%20%7C%20Copperhead%20%28                
+                             Well-Worn%29&limit=50 "HTTP/1.1                   
+                             200 OK"                                           
+                    INFO     HTTP Request: GET                  _client.py:1786
+                             https://csfloat.com/api/v1/listing                
+                             s?market_hash_name=AUG%20%7C%20Cop                
+                             perhead%20%28Well-Worn%29&limit=50                
+                              "HTTP/1.1 200 OK"                                
+                    INFO     HTTP Request: GET                  _client.py:1786
+                             https://csfloat.com/api/v1/listing                
+                             s?limit=50&name=AUG%20%7C%20Copper                
+                             head%20%28Well-Worn%29 "HTTP/1.1                  
+                             200 OK"                                           
+[09/12/25 02:44:25] INFO     HTTP Request: GET                  _client.py:1786
+                             https://csfloat.com/api/v1/listing                
+                             s?sort_by=lowest_price&market_hash                
+                             _name=AUG%20%7C%20Flame%20J%C3%B6r                
+                             mungandr%20%28Battle-Scarred%29&li                
+                             mit=50&category=1 "HTTP/1.1 200                   
+                             OK"                                               
+                    INFO     HTTP Request: GET                  _client.py:1786
+                             https://csfloat.com/api/v1/listing                
+                             s?sort_by=lowest_price&market_hash                
+                             _name=AUG%20%7C%20Flame%20J%C3%B6r                
+                             mungandr%20%28Battle-Scarred%29&li                
+                             mit=50 "HTTP/1.1 200 OK"                          
+                    INFO     HTTP Request: GET                  _client.py:1786
+                             https://csfloat.com/api/v1/listing                
+                             s?market_hash_name=AUG%20%7C%20Fla                
+                             me%20J%C3%B6rmungandr%20%28Battle-                
+                             Scarred%29&limit=50 "HTTP/1.1 200                 
+                             OK"                                               
+[09/12/25 02:44:26] INFO     HTTP Request: GET                  _client.py:1786
+                             https://csfloat.com/api/v1/listing                
+                             s?limit=50&name=AUG%20%7C%20Flame%                
+                             20J%C3%B6rmungandr%20%28Battle-Sca                
+                             rred%29 "HTTP/1.1 200 OK"                         
+[09/12/25 02:44:30] INFO     HTTP Request: GET                  _client.py:1786
+                             https://csfloat.com/api/v1/listing                
+                             s?sort_by=lowest_price&market_hash                
+                             _name=AUG%20%7C%20Flame%20J%C3%B6r                
+                             mungandr%20%28Well-Worn%29&limit=5                
+                             0&category=1 "HTTP/1.1 200 OK"                    
+                    INFO     HTTP Request: GET                  _client.py:1786
+                             https://csfloat.com/api/v1/listing                
+                             s?sort_by=lowest_price&market_hash                
+                             _name=AUG%20%7C%20Flame%20J%C3%B6r                
+                             mungandr%20%28Well-Worn%29&limit=5                
+                             0 "HTTP/1.1 200 OK"                               
+                    INFO     HTTP Request: GET                  _client.py:1786
+                             https://csfloat.com/api/v1/listing                
+                             s?market_hash_name=AUG%20%7C%20Fla                
+                             me%20J%C3%B6rmungandr%20%28Well-Wo                
+                             rn%29&limit=50 "HTTP/1.1 200 OK"                  
+                    INFO     HTTP Request: GET                  _client.py:1786
+                             https://csfloat.com/api/v1/listing                
+                             s?limit=50&name=AUG%20%7C%20Flame%                
+                             20J%C3%B6rmungandr%20%28Well-Worn%                
+                             29 "HTTP/1.1 200 OK"                              
+[09/12/25 02:44:35] INFO     HTTP Request: GET                  _client.py:1786
+                             https://csfloat.com/api/v1/listing                
+                             s?sort_by=lowest_price&market_hash                
+                             _name=AUG%20%7C%20Lil%27%20Pig%20%                
+                             28Battle-Scarred%29&limit=50&categ                
+                             ory=1 "HTTP/1.1 200 OK"                           
+[09/12/25 02:44:40] INFO     HTTP Request: GET                  _client.py:1786
+                             https://csfloat.com/api/v1/listing                
+                             s?sort_by=lowest_price&market_hash                
+                             _name=AUG%20%7C%20Midnight%20Lily%                
+                             20%28Minimal%20Wear%29&limit=50&ca                
+                             tegory=1 "HTTP/1.1 200 OK"                        
+                    INFO     HTTP Request: GET                  _client.py:1786
+                             https://csfloat.com/api/v1/listing                
+                             s?sort_by=lowest_price&market_hash                
+                             _name=AUG%20%7C%20Midnight%20Lily%                
+                             20%28Minimal%20Wear%29&limit=50                   
+                             "HTTP/1.1 200 OK"                                 
+                    INFO     HTTP Request: GET                  _client.py:1786
+                             https://csfloat.com/api/v1/listing                
+                             s?market_hash_name=AUG%20%7C%20Mid                
+                             night%20Lily%20%28Minimal%20Wear%2                
+                             9&limit=50 "HTTP/1.1 200 OK"                      
+                    INFO     HTTP Request: GET                  _client.py:1786
+                             https://csfloat.com/api/v1/listing                
+                             s?limit=50&name=AUG%20%7C%20Midnig                
+                             ht%20Lily%20%28Minimal%20Wear%29                  
+                             "HTTP/1.1 200 OK"                                 
+[09/12/25 02:44:45] INFO     HTTP Request: GET                  _client.py:1786
+                             https://csfloat.com/api/v1/listing                
+                             s?sort_by=lowest_price&market_hash                
+                             _name=AUG%20%7C%20Random%20Access%                
+                             20%28Minimal%20Wear%29&limit=50&ca                
+                             tegory=1 "HTTP/1.1 200 OK"                        
+[09/12/25 02:44:50] INFO     HTTP Request: GET                  _client.py:1786
+                             https://csfloat.com/api/v1/listing                
+                             s?sort_by=lowest_price&market_hash                
+                             _name=AUG%20%7C%20Random%20Access%                
+                             20%28Well-Worn%29&limit=50&categor                
+                             y=1 "HTTP/1.1 200 OK"                             
+[09/12/25 02:44:55] INFO     HTTP Request: GET                  _client.py:1786
+                             https://csfloat.com/api/v1/listing                
+                             s?sort_by=lowest_price&market_hash                
+                             _name=AUG%20%7C%20Ricochet%20%28Ba                
+                             ttle-Scarred%29&limit=50&category=                
+                             1 "HTTP/1.1 200 OK"                               
+[09/12/25 02:45:00] INFO     HTTP Request: GET                  _client.py:1786
+                             https://csfloat.com/api/v1/listing                
+                             s?sort_by=lowest_price&market_hash                
+                             _name=AUG%20%7C%20Ricochet%20%28Fa                
+                             ctory%20New%29&limit=50&category=1                
+                              "HTTP/1.1 200 OK"                                
+[09/12/25 02:45:05] INFO     HTTP Request: GET                  _client.py:1786
+                             https://csfloat.com/api/v1/listing                
+                             s?sort_by=lowest_price&market_hash                
+                             _name=AUG%20%7C%20Ricochet%20%28Fi                
+                             eld-Tested%29&limit=50&category=1                 
+                             "HTTP/1.1 200 OK"                                 
+[09/12/25 02:45:10] INFO     HTTP Request: GET                  _client.py:1786
+                             https://csfloat.com/api/v1/listing                
+                             s?sort_by=lowest_price&market_hash                
+                             _name=AUG%20%7C%20Ricochet%20%28Mi                
+                             nimal%20Wear%29&limit=50&category=                
+                             1 "HTTP/1.1 200 OK"                               
+[09/12/25 02:45:15] INFO     HTTP Request: GET                  _client.py:1786
+                             https://csfloat.com/api/v1/listing                
+                             s?sort_by=lowest_price&market_hash                
+                             _name=AUG%20%7C%20Ricochet%20%28We                
+                             ll-Worn%29&limit=50&category=1                    
+                             "HTTP/1.1 200 OK"                                 
+[09/12/25 02:45:20] INFO     HTTP Request: GET                  _client.py:1786
+                             https://csfloat.com/api/v1/listing                
+                             s?sort_by=lowest_price&market_hash                
+                             _name=AUG%20%7C%20Sand%20Storm%20%                
+                             28Battle-Scarred%29&limit=50&categ                
+                             ory=1 "HTTP/1.1 200 OK"                           
+[09/12/25 02:45:25] INFO     HTTP Request: GET                  _client.py:1786
+                             https://csfloat.com/api/v1/listing                
+                             s?sort_by=lowest_price&market_hash                
+                             _name=AUG%20%7C%20Sand%20Storm%20%                
+                             28Factory%20New%29&limit=50&catego                
+                             ry=1 "HTTP/1.1 200 OK"                            
+[09/12/25 02:45:30] INFO     HTTP Request: GET                  _client.py:1786
+                             https://csfloat.com/api/v1/listing                
+                             s?sort_by=lowest_price&market_hash                
+                             _name=AUG%20%7C%20Sand%20Storm%20%                
+                             28Field-Tested%29&limit=50&categor                
+                             y=1 "HTTP/1.1 200 OK"                             
+[09/12/25 02:45:35] INFO     HTTP Request: GET                  _client.py:1786
+                             https://csfloat.com/api/v1/listing                
+                             s?sort_by=lowest_price&market_hash                
+                             _name=AUG%20%7C%20Sand%20Storm%20%                
+                             28Minimal%20Wear%29&limit=50&categ                
+                             ory=1 "HTTP/1.1 200 OK"                           
+[09/12/25 02:45:40] INFO     HTTP Request: GET                  _client.py:1786
+                             https://csfloat.com/api/v1/listing                
+                             s?sort_by=lowest_price&market_hash                
+                             _name=AUG%20%7C%20Sand%20Storm%20%                
+                             28Well-Worn%29&limit=50&category=1                
+                              "HTTP/1.1 200 OK"                                
+                    INFO     HTTP Request: GET                  _client.py:1786
+                             https://csfloat.com/api/v1/listing                
+                             s?sort_by=lowest_price&market_hash                
+                             _name=AUG%20%7C%20Sand%20Storm%20%                
+                             28Well-Worn%29&limit=50 "HTTP/1.1                 
+                             200 OK"                                           
+                    INFO     HTTP Request: GET                  _client.py:1786
+                             https://csfloat.com/api/v1/listing                
+                             s?market_hash_name=AUG%20%7C%20San                
+                             d%20Storm%20%28Well-Worn%29&limit=                
+                             50 "HTTP/1.1 200 OK"                              
+                    INFO     HTTP Request: GET                  _client.py:1786
+                             https://csfloat.com/api/v1/listing                
+                             s?limit=50&name=AUG%20%7C%20Sand%2                
+                             0Storm%20%28Well-Worn%29 "HTTP/1.1                
+                             200 OK"                                           
+[09/12/25 02:45:45] INFO     HTTP Request: GET                  _client.py:1786
+                             https://csfloat.com/api/v1/listing                
+                             s?sort_by=lowest_price&market_hash                
+                             _name=AUG%20%7C%20Snake%20Pit%20%2                
+                             8Battle-Scarred%29&limit=50&catego                
+                             ry=1 "HTTP/1.1 200 OK"                            
+[09/12/25 02:45:50] INFO     HTTP Request: GET                  _client.py:1786
+                             https://csfloat.com/api/v1/listing                
+                             s?sort_by=lowest_price&market_hash                
+                             _name=AUG%20%7C%20Snake%20Pit%20%2                
+                             8Factory%20New%29&limit=50&categor                
+                             y=1 "HTTP/1.1 200 OK"                             
+[09/12/25 02:45:55] INFO     HTTP Request: GET                  _client.py:1786
+                             https://csfloat.com/api/v1/listing                
+                             s?sort_by=lowest_price&market_hash                
+                             _name=AUG%20%7C%20Snake%20Pit%20%2                
+                             8Field-Tested%29&limit=50&category                
+                             =1 "HTTP/1.1 200 OK"                              
+[09/12/25 02:46:00] INFO     HTTP Request: GET                  _client.py:1786
+                             https://csfloat.com/api/v1/listing                
+                             s?sort_by=lowest_price&market_hash                
+                             _name=AUG%20%7C%20Snake%20Pit%20%2                
+                             8Minimal%20Wear%29&limit=50&catego                
+                             ry=1 "HTTP/1.1 200 OK"                            
+[09/12/25 02:46:05] INFO     HTTP Request: GET                  _client.py:1786
+                             https://csfloat.com/api/v1/listing                
+                             s?sort_by=lowest_price&market_hash                
+                             _name=AUG%20%7C%20Snake%20Pit%20%2                
+                             8Well-Worn%29&limit=50&category=1                 
+                             "HTTP/1.1 200 OK"                                 
+[09/12/25 02:46:10] INFO     HTTP Request: GET                  _client.py:1786
+                             https://csfloat.com/api/v1/listing                
+                             s?sort_by=lowest_price&market_hash                
+                             _name=AUG%20%7C%20Spalted%20Wood%2                
+                             0%28Battle-Scarred%29&limit=50&cat                
+                             egory=1 "HTTP/1.1 200 OK"                         
+[09/12/25 02:46:15] INFO     HTTP Request: GET                  _client.py:1786
+                             https://csfloat.com/api/v1/listing                
+                             s?sort_by=lowest_price&market_hash                
+                             _name=AUG%20%7C%20Spalted%20Wood%2                
+                             0%28Factory%20New%29&limit=50&cate                
+                             gory=1 "HTTP/1.1 200 OK"                          
+[09/12/25 02:46:20] INFO     HTTP Request: GET                  _client.py:1786
+                             https://csfloat.com/api/v1/listing                
+                             s?sort_by=lowest_price&market_hash                
+                             _name=AUG%20%7C%20Spalted%20Wood%2                
+                             0%28Field-Tested%29&limit=50&categ                
+                             ory=1 "HTTP/1.1 200 OK"                           
