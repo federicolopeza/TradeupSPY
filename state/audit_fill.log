@@ -1,0 +1,82 @@
+C:\Users\Lopez\AppData\Roaming\Python\Python313\site-packages\pydantic\_internal\_fields.py:198: UserWarning: Field name "schema" in "AppConfig" shadows an attribute in parent "BaseModel"
+  warnings.warn(
+Esperados: 6280 | Resueltos: 4549 | Faltantes: 1765
+Generado: state\missing_contracts.csv
+[09/12/25 02:15:27] INFO     HTTP Request: GET                  _client.py:1786
+                             https://csfloat.com/api/v1/listing                
+                             s?sort_by=lowest_price&market_hash                
+                             _name=AK-47%20%7C%20Bloodsport%20%                
+                             28Battle-Scarred%29&limit=50&categ                
+                             ory=1 "HTTP/1.1 429 Too Many                      
+                             Requests"                                         
+[09/12/25 02:16:16] INFO     HTTP Request: GET                  _client.py:1786
+                             https://csfloat.com/api/v1/listing                
+                             s?sort_by=lowest_price&market_hash                
+                             _name=AK-47%20%7C%20Bloodsport%20%                
+                             28Battle-Scarred%29&limit=50&categ                
+                             ory=1 "HTTP/1.1 429 Too Many                      
+                             Requests"                                         
+C:\Users\Lopez\AppData\Roaming\Python\Python313\site-packages\pydantic\_internal\_fields.py:198: UserWarning: Field name "schema" in "AppConfig" shadows an attribute in parent "BaseModel"
+  warnings.warn(
+Esperados: 6280 | Resueltos: 4549 | Faltantes: 1765
+Generado: state\missing_contracts.csv
+[09/12/25 02:21:25] INFO     HTTP Request: GET                  _client.py:1786
+                             https://csfloat.com/api/v1/listing                
+                             s?sort_by=lowest_price&market_hash                
+                             _name=AK-47%20%7C%20Bloodsport%20%                
+                             28Battle-Scarred%29&limit=50&categ                
+                             ory=1 "HTTP/1.1 429 Too Many                      
+                             Requests"                                         
+[09/12/25 02:21:50] INFO     HTTP Request: GET                  _client.py:1786
+                             https://csfloat.com/api/v1/listing                
+                             s?sort_by=lowest_price&market_hash                
+                             _name=AK-47%20%7C%20Bloodsport%20%                
+                             28Battle-Scarred%29&limit=50&categ                
+                             ory=1 "HTTP/1.1 429 Too Many                      
+                             Requests"                                         
+[09/12/25 02:22:39] INFO     HTTP Request: GET                  _client.py:1786
+                             https://csfloat.com/api/v1/listing                
+                             s?sort_by=lowest_price&market_hash                
+                             _name=AK-47%20%7C%20Rat%20Rod%20%2                
+                             8Factory%20New%29&limit=50&categor                
+                             y=1 "HTTP/1.1 429 Too Many                        
+                             Requests"                                         
+C:\Users\Lopez\AppData\Roaming\Python\Python313\site-packages\pydantic\_internal\_fields.py:198: UserWarning: Field name "schema" in "AppConfig" shadows an attribute in parent "BaseModel"
+  warnings.warn(
+Esperados: 6280 | Resueltos: 4549 | Faltantes: 1765
+Generado: state\missing_contracts.csv
+[09/12/25 02:23:49] INFO     HTTP Request: GET                  _client.py:1786
+                             https://csfloat.com/api/v1/listing                
+                             s?sort_by=lowest_price&market_hash                
+                             _name=AK-47%20%7C%20Rat%20Rod%20%2                
+                             8Factory%20New%29&limit=50&categor                
+                             y=1 "HTTP/1.1 429 Too Many                        
+                             Requests"                                         
+[09/12/25 02:24:22] INFO     HTTP Request: GET                  _client.py:1786
+                             https://csfloat.com/api/v1/listing                
+                             s?sort_by=lowest_price&market_hash                
+                             _name=AK-47%20%7C%20Rat%20Rod%20%2                
+                             8Factory%20New%29&limit=50&categor                
+                             y=1 "HTTP/1.1 429 Too Many                        
+                             Requests"                                         
+[09/12/25 02:24:59] INFO     HTTP Request: GET                  _client.py:1786
+                             https://csfloat.com/api/v1/listing                
+                             s?sort_by=lowest_price&market_hash                
+                             _name=AK-47%20%7C%20Rat%20Rod%20%2                
+                             8Field-Tested%29&limit=50&category                
+                             =1 "HTTP/1.1 429 Too Many                         
+                             Requests"                                         
+[09/12/25 02:25:48] INFO     HTTP Request: GET                  _client.py:1786
+                             https://csfloat.com/api/v1/listing                
+                             s?sort_by=lowest_price&market_hash                
+                             _name=AK-47%20%7C%20Rat%20Rod%20%2                
+                             8Field-Tested%29&limit=50&category                
+                             =1 "HTTP/1.1 429 Too Many                         
+                             Requests"                                         
+[09/12/25 02:25:55] INFO     HTTP Request: GET                  _client.py:1786
+                             https://csfloat.com/api/v1/listing                
+                             s?sort_by=lowest_price&market_hash                
+                             _name=AK-47%20%7C%20Rat%20Rod%20%2                
+                             8Field-Tested%29&limit=50&category                
+                             =1 "HTTP/1.1 429 Too Many                         
+                             Requests"                                         

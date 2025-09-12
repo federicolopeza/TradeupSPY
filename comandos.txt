@@ -1,0 +1,45 @@
+$base = "contracts\supreme_20250910_040228"
+$rar = @('consumer','industrial','mil-spec','restricted','classified','covert')
+foreach ($r in $rar) {
+  $dir = Join-Path $base "$r\NoST"
+  if (Test-Path $dir) {
+    python scripts/evaluate_all_contracts.py `
+      --contracts-dir $dir `
+      --catalog "data\skins_fixed.csv" `
+      --fees 0.02 `
+      --sleep 0 `
+      --workers 12 `
+      --extra-cli-flags "--no-fetch-prices --local-prices docs\local_prices.csv"
+  } else {
+    Write-Host "No existe: $dir (saltando)"
+  }
+}
+
+
+while ($true) {
+  python -m cs2_local_prices.cli audit `
+    --catalog data/skins_fixed.csv `
+    --rarities consumer,industrial,mil-spec,restricted,classified,covert `
+    --st st `
+    --prices-csv docs/local_prices.csv `
+    --out-missing state/missing_contracts.csv `
+    --fill `
+    --sleep 5.0 `
+    --qps-cap 0.2 `
+    --timeout 15 `
+    --backoff 60 `
+    --max-pages 1 `
+    --resume state/prices_build_state.json `
+    --cache-store state\prices_cache.sqlite `
+    --metrics-out state\prices_metrics.json `
+    --log-level INFO *>&1 | Tee-Object -FilePath state\audit_fill.log -Append
+
+  if (Test-Path state\missing_contracts.csv) {
+    $missing = (Get-Content state\missing_contracts.csv | Select-Object -Skip 1).Count
+    if ($missing -le 0) { Write-Host "Completado: faltantes=0"; break }
+    Write-Host "Faltantes aún: $missing; reintentando en 30s..."
+    Start-Sleep -Seconds 30
+  } else {
+    Write-Host "Completado (no se generó missing_contracts.csv)"; break
+  }
+}
