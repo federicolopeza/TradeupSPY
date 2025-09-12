@@ -13,6 +13,7 @@ contracts/supreme_20250910_040228/classified
 contracts/supreme_20250910_040228/restricted
 contracts/supreme_20250910_040228/restricted/NoST
 contracts/supreme_20250910_040228/restricted/NoST/1c
+contracts_reval/
 # Logs and results
 scan_results.csv
 errors/

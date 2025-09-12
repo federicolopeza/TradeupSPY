@@ -18,6 +18,13 @@ def get_api_key() -> Optional[str]:
     return os.getenv("CSFLOAT_API_KEY")
 
 
+def get_cookie() -> Optional[str]:
+    """Optional session cookie for CSFloat (e.g., "session=...; cf_clearance=...").
+    If present, the client will send it as a Cookie header in addition to Authorization.
+    """
+    return os.getenv("CSFLOAT_COOKIE")
+
+
 def build_market_hash_name(name: str, wear_name: str, stattrak: bool) -> str:
     """Construct Steam market_hash_name like:
     - "AK-47 | Cartel (Field-Tested)"
@@ -56,6 +63,10 @@ class CsfloatClient:
         headers = {"accept": "application/json"}
         if self.api_key:
             headers["authorization"] = self.api_key
+        cookie = get_cookie()
+        if cookie:
+            # Allow passing browser session cookie for endpoints requiring login.
+            headers["cookie"] = cookie
         return headers
 
     
