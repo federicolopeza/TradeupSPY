@@ -199,6 +199,48 @@ def main() -> None:
     total_multisets = math.comb(S + 10 - 1, 10)
     print(f"[EXH] Rareza={args.rarity} | Skins={S} | Multisets(10)≈{total_multisets:,}")
 
+    # Optimización: precomputar para cada skin si es elegible y su costo por ítem según float seleccionado
+    # Además, si hay tope de costo, filtrar skins cuyo precio por ítem > promedio permitido (max_total/10)
+    avg_cents_cap: Optional[int] = None
+    if args.enforce_max_total and args.max_total_usd and args.max_total_usd > 0:
+        avg_cents_cap = int(round((args.max_total_usd * 100.0) / 10.0))
+
+    precomputed: List[Dict[str, object]] = []
+    for r in skins:
+        coll = (r.get("Coleccion") or "").strip()
+        if coll not in eligible_collections:
+            continue
+        fmin, fmax = get_float_range(r)
+        f = midpoint(fmin, fmax) if args.float_mode == "mid" else (fmin + (fmax - fmin) * args.fnorm)
+        wear = wear_from_float(f)
+        # Si necesitamos costo, calcularlo una vez
+        cents: Optional[int] = None
+        if args.enforce_max_total and price_map:
+            mhn = build_mhn(str(r.get("Arma") or "").strip(), wear, args.stattrak)
+            cents = price_map.get(mhn)
+            if cents is None:
+                # Si no hay precio para esta skin, no la consideramos para contratos con tope
+                continue
+            if avg_cents_cap is not None and cents > avg_cents_cap:
+                # Muy cara para cumplir el promedio objetivo
+                continue
+        precomputed.append({
+            "row": r,
+            "float": f,
+            "wear": wear,
+            "cents": cents,  # puede ser None si no se aplica tope
+        })
+
+    if not precomputed:
+        print("[EXH] No hay skins elegibles tras validaciones de colección/precio. Abortando.")
+        return
+
+    # Reescribir 'skins' a la lista prefiltrada para acelerar combinaciones
+    skins = [x["row"] for x in precomputed]  # type: ignore
+    pre_map = {id(x["row"]): x for x in precomputed}  # type: ignore
+    S = len(skins)
+    print(f"[EXH] Skins elegibles tras filtro: {S}")
+
     seen = 0
     generated = 0
     for combo in itertools.combinations_with_replacement(range(S), 10):
@@ -213,26 +255,13 @@ def main() -> None:
         total_cents = 0
         for idx in combo:
             row = skins[idx]
-            coll = (row.get("Coleccion") or "").strip()
+            # Usar precomputado
+            meta = pre_map.get(id(row))
+            f = float(meta["float"]) if meta else midpoint(*get_float_range(row))  # type: ignore
+            cents = meta.get("cents") if meta else None  # type: ignore
 
-            # Validación fija: cada arma debe venir de colección con next tier y múltiples rangos
-            if coll not in eligible_collections:
-                skip = True
-                break
-
-            fmin, fmax = get_float_range(row)
-            if args.float_mode == "mid":
-                f = midpoint(fmin, fmax)
-            else:  # fnorm
-                f = fmin + (fmax - fmin) * args.fnorm
-
-            # Si corresponde, sumar costo usando precios locales
             if args.enforce_max_total and price_map:
-                wear = wear_from_float(f)
-                mhn = build_mhn(str(row["Arma"]).strip(), wear, args.stattrak)
-                cents = price_map.get(mhn)
                 if cents is None:
-                    # No podemos verificar el costo → descartar por estricta elegibilidad de costos
                     skip = True
                     break
                 total_cents += int(cents)
