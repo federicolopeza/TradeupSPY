@@ -30,6 +30,13 @@ from typing import Optional
 from textwrap import shorten
 from concurrent.futures import ThreadPoolExecutor, as_completed
 import threading
+try:
+    # Rich es opcional para salida enriquecida
+    from rich.console import Console
+    from rich.progress import Progress, SpinnerColumn, BarColumn, TaskProgressColumn, TimeElapsedColumn, TimeRemainingColumn
+except Exception:  # pragma: no cover
+    Console = None  # type: ignore
+    Progress = None  # type: ignore
 
 # Patrones de diagnóstico
 RATE_LIMIT_PATTERNS = re.compile(
@@ -151,6 +158,8 @@ def main() -> None:
         help="Guarda stdout/stderr del CLI para TODOS los contratos en artifacts/",
     )
     ap.add_argument("--workers", type=int, default=1, help="Cantidad de hilos (workers) en paralelo. 1 = secuencial")
+    ap.add_argument("--rich", action="store_true", help="Mostrar barra de progreso y logs enriquecidos en terminal (Rich)")
+    ap.add_argument("--no-emoji", action="store_true", help="No imprimir emojis en stdout (útil en consolas cp1252)")
     args = ap.parse_args()
 
     src = Path(args.contracts_dir)
@@ -183,11 +192,31 @@ def main() -> None:
             )
 
     total = 0
+    ok_count = 0
+    fail_count = 0
+    error_count = 0
     # Forzar UTF-8 en el subproceso para evitar UnicodeEncodeError en Windows (cp1252)
     child_env = os.environ.copy()
     child_env["PYTHONIOENCODING"] = "utf-8"
     child_env["PYTHONUTF8"] = "1"
     artifacts_dir = Path("artifacts") if 'artifacts_dir' not in locals() else artifacts_dir
+
+    # Consola enriquecida (opcional)
+    console = None
+    progress = None
+    task_id = None
+    if args.rich and Console is not None and Progress is not None:
+        console = Console()
+        progress = Progress(
+            SpinnerColumn(style="bold cyan"),
+            "[bold]Evaluando[/bold]",
+            BarColumn(bar_width=None),
+            TaskProgressColumn(show_speed=True),
+            TimeElapsedColumn(),
+            TimeRemainingColumn(),
+            transient=False,
+            console=console,
+        )
 
     # Locks para I/O concurrente
     io_lock = threading.Lock()
@@ -265,9 +294,20 @@ def main() -> None:
                             log_path, rel, decision, status,
                             total_cost, ev_gross, ev_net, pnl_net, roi_net, prob, be
                         )
+                    with io_lock:
+                        if rentable:
+                            ok_count += 1
+                        else:
+                            fail_count += 1
 
-                    tag = "✅" if rentable else "❌"
-                    print(f"{tag} {status} → {rel}")
+                    # Log de evento
+                    tag_ok = "[OK]" if args.no_emoji else "✅"
+                    tag_fail = "[FAIL]" if args.no_emoji else "❌"
+                    msg = f"{(tag_ok if rentable else tag_fail)} {status} → {rel}"
+                    if console is not None:
+                        console.print(msg)
+                    else:
+                        print(msg)
                     # Echo del CLI si corresponde
                     if args.echo_cli == "always":
                         print(stdout)
@@ -275,7 +315,12 @@ def main() -> None:
 
                 # JSON ausente con returncode=0
                 code, suggested, transitory = ("JSON_MISSING", None, False)
-                print(f"⚠️  JSON_MISSING → {rel}")
+                warn_tag = "[WARN]" if args.no_emoji else "⚠️"
+                msg = f"{warn_tag} JSON_MISSING → {rel}"
+                if console is not None:
+                    console.print(msg)
+                else:
+                    print(msg)
             else:
                 code, suggested, transitory = classify_error(stdout, stderr, p.returncode)
                 # Echo del CLI en error si corresponde
@@ -283,7 +328,12 @@ def main() -> None:
                     print(stdout)
                 if code == "RATE_LIMIT":
                     sleep_for = float(suggested) if suggested else (args.backoff * (2 ** (attempts - 1)))
-                    print(f"⏳ RATE_LIMIT → sleeping {sleep_for:.1f}s (attempt {attempts}/{args.retries+1}) → {rel}")
+                    wait_tag = "[WAIT]" if args.no_emoji else "⏳"
+                    msg = f"{wait_tag} RATE_LIMIT → sleeping {sleep_for:.1f}s (attempt {attempts}/{args.retries+1}) → {rel}"
+                    if console is not None:
+                        console.print(msg)
+                    else:
+                        print(msg)
                     time.sleep(max(0.0, sleep_for))
 
             # Manejo de reintentos
@@ -291,7 +341,12 @@ def main() -> None:
                 if transitory and attempts <= args.retries:
                     if code in ("TIMEOUT", "NETWORK", "UNKNOWN"):
                         sleep_for = args.backoff * (2 ** (attempts - 1))
-                        print(f"🌐 {code} → reintento en {sleep_for:.1f}s (attempt {attempts}/{args.retries+1}) → {rel}")
+                        net_tag = "[RETRY]" if args.no_emoji else "🌐"
+                        msg = f"{net_tag} {code} → reintento en {sleep_for:.1f}s (attempt {attempts}/{args.retries+1}) → {rel}"
+                        if console is not None:
+                            console.print(msg)
+                        else:
+                            print(msg)
                         time.sleep(max(0.0, sleep_for))
                     continue
 
@@ -307,19 +362,50 @@ def main() -> None:
                     dest.parent.mkdir(parents=True, exist_ok=True)
                     if fp.exists():
                         shutil.move(str(fp), str(dest))
-                    print(f"🟥 ERROR:{code} → {rel}")
+                    error_count += 1
+                    err_tag = "[ERROR]" if args.no_emoji else "🟥"
+                    msg = f"{err_tag} ERROR:{code} → {rel}"
+                    if console is not None:
+                        console.print(msg)
+                    else:
+                        print(msg)
                 break  # siguiente archivo
 
         with io_lock:
             nonlocal_total = total + 1
             total = nonlocal_total
 
+        # Actualizar progreso
+        if progress is not None and task_id is not None:
+            with io_lock:
+                progress.update(task_id, completed=total)
+
         # Respetar sleep si corresponde
         if args.sleep and args.sleep > 0:
             time.sleep(max(0.0, args.sleep))
 
     try:
-        if args.workers <= 1:
+        if args.rich and progress is not None:
+            # Crear barra de progreso con total conocido
+            with progress:
+                task_id = progress.add_task("eval", total=len(files))
+                if args.workers <= 1:
+                    for fp in files:
+                        process_one(fp)
+                        if args.max and total >= args.max:
+                            break
+                else:
+                    with ThreadPoolExecutor(max_workers=max(1, args.workers)) as ex:
+                        futures = []
+                        for fp in files:
+                            if args.max and total >= args.max:
+                                break
+                            futures.append(ex.submit(process_one, fp))
+                        for fut in as_completed(futures):
+                            _ = fut.result()
+                            if args.max and total >= args.max:
+                                break
+        elif args.workers <= 1:
             for fp in files:
                 process_one(fp)
                 if args.max and total >= args.max:
@@ -338,7 +424,11 @@ def main() -> None:
     except KeyboardInterrupt:
         print(f"\n[INTERRUPT] Cortado por usuario tras {total} contratos evaluados.")
 
-    print(f"Evaluados {total} contratos. OK -> {ok}, FAIL -> {fail}. Log -> {log_path}")
+    summary = f"Evaluados {total} contratos. OK -> {ok_count}, FAIL -> {fail_count}, ERROR -> {error_count}. Log -> {log_path}"
+    if console is not None:
+        console.print(f"[bold green]{summary}[/bold green]")
+    else:
+        print(summary)
 
 
 if __name__ == "__main__":
