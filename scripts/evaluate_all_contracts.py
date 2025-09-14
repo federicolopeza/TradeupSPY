@@ -158,6 +158,7 @@ def main() -> None:
         help="Guarda stdout/stderr del CLI para TODOS los contratos en artifacts/",
     )
     ap.add_argument("--workers", type=int, default=1, help="Cantidad de hilos (workers) en paralelo. 1 = secuencial")
+    ap.add_argument("--no-move", action="store_true", help="No mover contratos a OK/FAIL/ERROR; solo loguear resultados")
     ap.add_argument("--rich", action="store_true", help="Mostrar barra de progreso y logs enriquecidos en terminal (Rich)")
     ap.add_argument("--no-emoji", action="store_true", help="No imprimir emojis en stdout (útil en consolas cp1252)")
     args = ap.parse_args()
@@ -288,7 +289,7 @@ def main() -> None:
                     dest = (ok if rentable else fail) / rel
                     with io_lock:
                         dest.parent.mkdir(parents=True, exist_ok=True)
-                        if fp.exists():
+                        if not args.no_move and fp.exists():
                             shutil.move(str(fp), str(dest))
                         append_result_csv(
                             log_path, rel, decision, status,
@@ -360,7 +361,7 @@ def main() -> None:
                     )
                     dest = err / rel
                     dest.parent.mkdir(parents=True, exist_ok=True)
-                    if fp.exists():
+                    if not args.no_move and fp.exists():
                         shutil.move(str(fp), str(dest))
                     error_count += 1
                     err_tag = "[ERROR]" if args.no_emoji else "🟥"
