@@ -89,6 +89,64 @@ def sample_float(
     return max(min(fmin + (fmax - fmin) * u, 1.0), 0.0)
 
 
+# --- Utilidades para precios locales y wear buckets ---
+WEAR_BUCKETS: List[Tuple[str, float, float, bool]] = [
+    ("Factory New", 0.00, 0.07, False),
+    ("Minimal Wear", 0.07, 0.15, False),
+    ("Field-Tested", 0.15, 0.38, False),
+    ("Well-Worn", 0.38, 0.45, False),
+    ("Battle-Scarred", 0.45, 1.00, True),
+]
+
+
+def wear_from_float_value(f: float) -> str:
+    for name, lo, hi, inc_hi in WEAR_BUCKETS:
+        if (lo <= f < hi) or (inc_hi and abs(f - hi) < 1e-12):
+            return name
+    return "Field-Tested"
+
+
+def build_mhn(name: str, wear: str, stattrak: bool) -> str:
+    return ("StatTrak™ " if stattrak else "") + f"{name} ({wear})"
+
+
+def load_local_prices(path: Path) -> Dict[str, int]:
+    prices: Dict[str, int] = {}
+    if not path.exists():
+        return prices
+    with path.open("r", encoding="utf-8", newline="") as f:
+        r = csv.DictReader(f)
+        # Admitir ambos formatos, pero acá sólo usamos MarketHashName si está
+        fields = set(r.fieldnames or [])
+        if {"MarketHashName", "PriceCents"}.issubset(fields):
+            for row in r:
+                mhn = (row.get("MarketHashName") or "").strip()
+                pc = (row.get("PriceCents") or "").strip()
+                if not mhn or not pc:
+                    continue
+                try:
+                    prices[mhn] = int(pc)
+                except Exception:
+                    pass
+        else:
+            # Intentar Name/Wear/PriceCents[,StatTrak]
+            f.seek(0)
+            r = csv.DictReader(f)
+            for row in r:
+                name = (row.get("Name") or "").strip()
+                wear = (row.get("Wear") or "").strip()
+                pc = (row.get("PriceCents") or "").strip()
+                if not name or not wear or not pc:
+                    continue
+                st_raw = (row.get("StatTrak") or "").strip().lower()
+                st = st_raw in {"1", "true", "t", "yes", "y"}
+                try:
+                    prices[build_mhn(name, wear, st)] = int(pc)
+                except Exception:
+                    pass
+    return prices
+
+
 def main() -> None:
     ap = argparse.ArgumentParser("Generador RANDOM de contratos (10 ítems)")
     ap.add_argument("--catalog", required=True, help="Ruta a skins_fixed.csv")
@@ -107,6 +165,11 @@ def main() -> None:
     ap.add_argument("--fnorm-per", choices=["contract", "entry"], default="contract", help="Elegir f_norm por contrato o por entrada")
     ap.add_argument("--seed", type=int, default=42, help="Semilla RNG")
     ap.add_argument("--out-dir", default="contracts/random", help="Carpeta de salida")
+    # Tope/cota de costo total con precios locales
+    ap.add_argument("--enforce-total-range", action="store_true", help="Enforce rango de costo total con precios locales")
+    ap.add_argument("--min-total-usd", type=float, default=0.0, help="Costo total mínimo USD (0=sin mínimo)")
+    ap.add_argument("--max-total-usd", type=float, default=0.0, help="Costo total máximo USD (0=sin máximo)")
+    ap.add_argument("--local-prices", default="docs/local_prices_median7d_or_min.csv", help="CSV local de precios (MarketHashName,PriceCents o Name,Wear,PriceCents[,StatTrak])")
     args = ap.parse_args()
 
     random.seed(args.seed)
@@ -128,6 +191,16 @@ def main() -> None:
     base_out = Path(args.out_dir) / sanitize(args.rarity)
     base_out.mkdir(parents=True, exist_ok=True)
 
+    # Cargar precios si hay enforcement
+    prices_by_mhn: Dict[str, int] = {}
+    min_cents = int(round(args.min_total_usd * 100)) if args.min_total_usd and args.min_total_usd > 0 else None  # type: ignore
+    max_cents = int(round(args.max_total_usd * 100)) if args.max_total_usd and args.max_total_usd > 0 else None  # type: ignore
+    if args.enforce_total_range and (min_cents or max_cents):
+        prices_by_mhn = load_local_prices(Path(args.local_prices))
+        if not prices_by_mhn:
+            print(f"[RND] Aviso: --enforce-total-range activo pero no se pudieron cargar precios de {args.local_prices}. Se desactiva enforcement.")
+            args.enforce_total_range = False
+
     f_norm_choices: List[float] = []
     if args.float_mode == "fnorm":
         for s in args.fnorm_values.split(","):
@@ -148,6 +221,7 @@ def main() -> None:
         return random.random() < max(0.0, min(1.0, args.p_st))
 
     generated = 0
+    attempts = 0
     while generated < args.n:
         kmin = max(1, args.collections_min)
         kmax = min(max(1, args.collections_max), len(collections), 10)
@@ -158,13 +232,33 @@ def main() -> None:
         is_st = pick_st_mode()
         mode_dir = "ST" if is_st else "NoST"
         out_dir = base_out / mode_dir / f"{k}c"
-        out_dir.mkdir(parents=True, exist_ok=True)
+
+        # Asegurar que el directorio exista; si hay un archivo con el mismo nombre, renombrarlo
+        parent = out_dir.parent
+        parent.mkdir(parents=True, exist_ok=True)
+        if out_dir.exists():
+            try:
+                if out_dir.is_file():
+                    backup = out_dir.with_name(out_dir.name + ".old")
+                    # Evitar sobrescribir un backup previo
+                    i = 1
+                    while backup.exists():
+                        backup = out_dir.with_name(out_dir.name + f".old{i}")
+                        i += 1
+                    out_dir.rename(backup)
+            except Exception:
+                pass
+        # Crear directorio si aún no existe
+        if not out_dir.exists():
+            out_dir.mkdir(parents=False, exist_ok=True)
 
         cached_contract_fnorm: Optional[float] = None
         if args.float_mode == "fnorm" and args.fnorm_per == "contract":
             cached_contract_fnorm = random.choice(f_norm_choices)
 
         rows_out: List[List[str]] = []
+        total_cents = 0
+        missing_price = False
         for coll, cnt in zip(chosen_cols, counts):
             skins_list = by_coll[coll]
             for _ in range(cnt):
@@ -188,6 +282,23 @@ def main() -> None:
                         "true" if is_st else "false",
                     ]
                 )
+                if args.enforce_total_range and prices_by_mhn:
+                    wear = wear_from_float_value(f)
+                    mhn = build_mhn(str(row["Arma"]).strip(), wear, is_st)
+                    pc = prices_by_mhn.get(mhn)
+                    if pc is None:
+                        missing_price = True
+                    else:
+                        total_cents += int(pc)
+
+        # Enforcement de rango de costo total si corresponde
+        if args.enforce_total_range and prices_by_mhn:
+            if missing_price:
+                attempts += 1
+                continue
+            if (min_cents is not None and total_cents < min_cents) or (max_cents is not None and total_cents > max_cents):
+                attempts += 1
+                continue
 
         fname = f"contract__rand__{generated:07d}.csv"
         with (out_dir / fname).open("w", encoding="utf-8", newline="") as f:

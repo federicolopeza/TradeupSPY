@@ -223,7 +223,7 @@ def main() -> None:
     io_lock = threading.Lock()
 
     def process_one(fp: Path) -> None:
-        nonlocal total
+        nonlocal total, ok_count, fail_count, error_count
         rel = fp.relative_to(src)
         cmd = [
             "python", "-m", "tradeup.cli",
