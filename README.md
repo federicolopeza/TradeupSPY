@@ -73,7 +73,7 @@ def calculate_probabilities(entries, outcomes):
 ### Instalación Paso a Paso
 ```bash
 # 1. Clonar el repositorio
-git clone https://github.com/falopp/TradeUpSPY.git
+git clone https://github.com/federicolopeza/TradeUpSPY.git
 cd TradeUpSPY
 
 # 2. Crear entorno virtual (recomendado)
